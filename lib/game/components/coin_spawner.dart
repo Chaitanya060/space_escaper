@@ -120,7 +120,7 @@ class CoinComponent extends PositionComponent
 class CoinSpawner extends Component with HasGameReference<SpaceEscaperGame> {
   final SpaceEscaperGame gameRef;
   double spawnTimer = 0;
-  final double spawnInterval = 2.3;
+  double spawnInterval = 2.3;
 
   CoinSpawner({required this.gameRef});
 

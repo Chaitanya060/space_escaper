@@ -9,6 +9,7 @@ import 'missions_screen.dart';
 import 'profile_screen.dart';
 import 'shop_screen.dart';
 import 'daily_reward_screen.dart';
+import '../game/space_escaper_game.dart';
 
 class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({super.key});
@@ -154,8 +155,14 @@ class _MainMenuScreenState extends State<MainMenuScreen>
 
                     // Main action buttons
                     _holoButton('▶  LAUNCH', isPrimary: true, onTap: () {
-                      Navigator.pushReplacement(context,
-                        MaterialPageRoute(builder: (_) => const GameScreen()));
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: const Color(0xFF0A1929),
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                        ),
+                        builder: (_) => _modePicker(),
+                      );
                     }),
                     const SizedBox(height: 12),
                     _holoButton('✦  SPACECRAFT', onTap: () {
@@ -201,6 +208,93 @@ class _MainMenuScreenState extends State<MainMenuScreen>
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _modeChip(String title, Color color, VoidCallback onTap, {String? subtitle}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: GoogleFonts.orbitron(color: color, fontWeight: FontWeight.w800)),
+            if (subtitle != null) ...[
+              const SizedBox(height: 6),
+              Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _modePicker() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('SELECT MODE', style: GoogleFonts.orbitron(
+              color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 3)),
+            const SizedBox(height: 12),
+            _modeChip('CLASSIC', const Color(0xFF00D9FF), () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (_) => const GameScreen()));
+            }, subtitle: 'Endless survival, increasing difficulty'),
+            const SizedBox(height: 10),
+            _modeChip('TIME ATTACK 90s', const Color(0xFFF97316), () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (_) => const GameScreen(mode: GameMode.timeAttack, timeLimitSec: 90)));
+            }, subtitle: 'Reach maximum distance before the clock runs out'),
+            const SizedBox(height: 10),
+            _modeChip('COIN FRENZY', const Color(0xFFFFD93D), () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (_) => const GameScreen(mode: GameMode.coinFrenzy, timeLimitSec: 120)));
+            }, subtitle: '2 minutes of massive coins, minimal danger'),
+            const SizedBox(height: 10),
+            _modeChip('SURVIVAL HELL', const Color(0xFFEF4444), () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (_) => const GameScreen(mode: GameMode.survivalHell)));
+            }, subtitle: 'One hit death, dense obstacles, stardust rewards'),
+            const SizedBox(height: 10),
+            _modeChip('BOSS RUSH', const Color(0xFFA855F7), () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (_) => const GameScreen(mode: GameMode.bossRush)));
+            }, subtitle: 'Defeat 5 bosses in a row'),
+            const SizedBox(height: 10),
+            _modeChip('OBSTACLES ONLY', const Color(0xFF34D399), () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (_) => const GameScreen(mode: GameMode.obstaclesOnly)));
+            }, subtitle: 'No coins. Pure dodging with wild physics'),
+            const SizedBox(height: 10),
+            _modeChip('ZEN', const Color(0xFF10B981), () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (_) => const GameScreen(mode: GameMode.zen)));
+            }, subtitle: 'Relaxing, minimal obstacles, no death'),
+            const SizedBox(height: 10),
+            _modeChip('GAUNTLET', const Color(0xFFFF6B35), () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (_) => const GameScreen(mode: GameMode.gauntlet)));
+            }, subtitle: '10 escalating challenge waves'),
+          ],
         ),
       ),
     );

@@ -22,7 +22,7 @@ import 'components/satellite_component.dart';
 import 'components/explosion_component.dart';
 
 enum GameState { playing, paused, gameOver }
-enum GameMode { endless, zen, hardcore }
+enum GameMode { endless, zen, hardcore, timeAttack, coinFrenzy, survivalHell, bossRush, obstaclesOnly, gauntlet }
 
 class SpaceEscaperGame extends FlameGame
     with HasCollisionDetection, PanDetector {
@@ -38,6 +38,17 @@ class SpaceEscaperGame extends FlameGame
 
   GameState gameState = GameState.playing;
   GameMode gameMode = GameMode.endless;
+  double? modeTimeLimit;
+  double modeTimeRemaining = 0;
+  bool obstaclesEnabled = true;
+  bool coinsEnabled = true;
+  bool bossesEnabled = true;
+  double coinModeMultiplier = 1.0;
+  int bossRushTarget = 5;
+  int bossRushDefeated = 0;
+  bool disableSecondWind = false;
+  double obstacleDensityMultiplier = 1.0;
+  double bossRushIntermission = 0.0;
   bool isLoaded = false;
   final String? overrideShipId; // For Test Drive
 
@@ -108,7 +119,13 @@ class SpaceEscaperGame extends FlameGame
   VoidCallback? onGameOver;
   VoidCallback? onPauseRequest;
   
-  SpaceEscaperGame({this.overrideShipId});
+  SpaceEscaperGame({this.overrideShipId, GameMode? mode, int? timeLimitSec}) {
+    if (mode != null) gameMode = mode;
+    if (timeLimitSec != null) {
+      modeTimeLimit = timeLimitSec.toDouble();
+      modeTimeRemaining = modeTimeLimit!;
+    }
+  }
 
   @override
   Color backgroundColor() => const Color(0xFF050D1A);
@@ -134,15 +151,43 @@ class SpaceEscaperGame extends FlameGame
     final shipId = overrideShipId ?? GameStorage.selectedShip;
     currentShip = getShipById(shipId);
 
-    // Auto-activate one owned consumable of each type at run start
+    // Mode setup
+    if (gameMode == GameMode.timeAttack) {
+      bossesEnabled = false;
+      modeTimeLimit ??= 90;
+      modeTimeRemaining = modeTimeLimit!;
+    } else if (gameMode == GameMode.coinFrenzy) {
+      obstaclesEnabled = false;
+      bossesEnabled = false;
+      coinModeMultiplier = 3.0;
+    } else if (gameMode == GameMode.survivalHell) {
+      obstacleDensityMultiplier = 5.0;
+      baseSpeed *= 0.8;
+      disableSecondWind = true;
+    } else if (gameMode == GameMode.bossRush) {
+      obstaclesEnabled = false;
+      coinsEnabled = true;
+      bossesEnabled = true;
+    } else if (gameMode == GameMode.obstaclesOnly) {
+      coinsEnabled = false;
+      bossesEnabled = false;
+      unlockedObstacles.addAll({'alien','blackhole','satellite','solarflare','meteor','wormhole'});
+    } else if (gameMode == GameMode.gauntlet) {
+      // Uses existing systems, special waves later
+      bossesEnabled = true;
+    }
+
+    // Auto-activate consumables if allowed
     if (GameStorage.useConsumable(ConsumableType.headStart.name)) {
       headStartActive = true;
     }
     if (GameStorage.useConsumable(ConsumableType.luckyClover.name)) {
       luckyCloverActive = true;
     }
-    if (GameStorage.useConsumable(ConsumableType.shieldCharge.name)) {
-      shieldChargeActive = true;
+    if (! (gameMode == GameMode.survivalHell)) {
+      if (GameStorage.useConsumable(ConsumableType.shieldCharge.name)) {
+        shieldChargeActive = true;
+      }
     }
 
     // Background
@@ -161,14 +206,19 @@ class SpaceEscaperGame extends FlameGame
     obstacleSpawner = ObstacleSpawner(gameRef: this);
     coinSpawner = CoinSpawner(gameRef: this);
 
-    if (gameMode != GameMode.zen) {
+    if (gameMode != GameMode.zen && obstaclesEnabled) {
       add(obstacleSpawner);
     }
-    add(coinSpawner);
+    if (coinsEnabled) {
+      add(coinSpawner);
+      if (gameMode == GameMode.coinFrenzy) {
+        coinSpawner.spawnInterval = 0.8;
+      }
+    }
 
     // Enemy wave system
     waveSystem = EnemyWaveSystem();
-    if (gameMode != GameMode.zen) {
+    if (gameMode != GameMode.zen && gameMode != GameMode.bossRush && gameMode != GameMode.coinFrenzy) {
       add(waveSystem);
     }
 
@@ -207,6 +257,11 @@ class SpaceEscaperGame extends FlameGame
     }
     
     isLoaded = true;
+
+    if (gameMode == GameMode.bossRush) {
+      final first = getBossForDistance(0, bossesDefeatedThisRun);
+      if (first != null) _spawnBoss(first);
+    }
   }
 
   void _setupSatellites() {
@@ -242,6 +297,39 @@ class SpaceEscaperGame extends FlameGame
     timeSurvived += dt;
     distance += currentSpeed * dt;
 
+    if (gameMode == GameMode.timeAttack) {
+      if (modeTimeLimit != null) {
+        modeTimeRemaining = max(0, modeTimeRemaining - dt);
+        if (modeTimeRemaining <= 0) {
+          _endRun();
+          return;
+        }
+      }
+    }
+
+    if (gameMode == GameMode.coinFrenzy) {
+      if (modeTimeLimit == null) {
+        modeTimeLimit = 120;
+        modeTimeRemaining = 120;
+      }
+      modeTimeRemaining = max(0, modeTimeRemaining - dt);
+      if (modeTimeRemaining <= 0) {
+        _endRun();
+        return;
+      }
+    }
+
+    if (gameMode == GameMode.bossRush && bossRushIntermission > 0) {
+      bossRushIntermission -= dt;
+      if (bossRushIntermission <= 0 && !bossActive) {
+        final next = allBosses.firstWhere(
+          (b) => !bossesDefeatedThisRun.contains(b.id),
+          orElse: () => allBosses.first,
+        );
+        _spawnBoss(next);
+      }
+    }
+
     // Speed curve
     final earlyFactor = (distance / 800).clamp(0.0, 10.0);
     speedMultiplier = 1 + earlyFactor * 0.06;
@@ -250,6 +338,11 @@ class SpaceEscaperGame extends FlameGame
       speedMultiplier += lateFactor * 0.04;
     }
     currentSpeed = baseSpeed * speedMultiplier;
+    if (gameMode == GameMode.timeAttack) {
+      final limit = (modeTimeLimit ?? 90);
+      final boost = 1 + (timeSurvived / limit) * 0.5;
+      currentSpeed *= boost;
+    }
 
     // Physics speed modifiers
     if (currentPhysicsMode == 'hyperdrive') {
@@ -266,6 +359,7 @@ class SpaceEscaperGame extends FlameGame
     // Obstacle density
     final densityFactor = (distance / 1200).clamp(0.0, 12.0);
     obstacleMultiplier = 1 + densityFactor * 0.06;
+    obstacleMultiplier *= obstacleDensityMultiplier;
 
     // Fire cooldown & Auto-fire check (if not manual)
     if (fireCooldownTimer > 0) {
@@ -329,6 +423,9 @@ class SpaceEscaperGame extends FlameGame
   // ═══════════════════════════════════════
 
   void activatePowerUp(PowerUpType type) {
+    if (gameMode == GameMode.survivalHell && type == PowerUpType.shield) {
+      return;
+    }
     final info = getPowerUpInfo(type);
     double duration = info.duration;
 
@@ -405,6 +502,8 @@ class SpaceEscaperGame extends FlameGame
 
   void _checkBossSpawn() {
     if (bossActive || gameMode == GameMode.zen) return;
+    if (gameMode == GameMode.bossRush && bossRushIntermission > 0) return;
+    if (!bossesEnabled) return;
     final boss = getBossForDistance(distance, bossesDefeatedThisRun);
     if (boss != null) {
       _spawnBoss(boss);
@@ -438,7 +537,6 @@ class SpaceEscaperGame extends FlameGame
     final reward = config?.rewardCoins ?? 100;
     runCoins += reward;
 
-    // Persist defeated boss
     GameStorage.addDefeatedBoss(bossId);
 
     screenEffects.triggerShake(duration: 0.5, intensity: 15);
@@ -447,6 +545,21 @@ class SpaceEscaperGame extends FlameGame
     bannerTimer = 3.0;
     bannerText = 'BOSS DEFEATED! +$reward COINS';
     bannerColor = const Color(0xFFFFD700);
+
+    if (gameMode == GameMode.bossRush) {
+      bossRushDefeated++;
+      if (bossRushDefeated >= bossRushTarget) {
+        _endRun();
+      } else {
+        bossRushIntermission = 2.0;
+        // Intermission coin burst
+        final rng = Random();
+        for (int i = 0; i < 15; i++) {
+          final x = 40 + rng.nextDouble() * (size.x - 80);
+          add(CoinComponent(position: Vector2(x, -20 - i * 10), value: rng.nextDouble() < 0.2 ? 5 : 1));
+        }
+      }
+    }
   }
 
   // ═══════════════════════════════════════
@@ -673,6 +786,14 @@ class SpaceEscaperGame extends FlameGame
         unlockedObstacles.add(entry.value.$1);
         milestoneAlert = entry.value.$2;
         milestoneAlertTimer = 3;
+        if (gameMode == GameMode.timeAttack) {
+          final bonus = entry.key >= 5000 ? 100 : (entry.key >= 2500 ? 60 : 30);
+          runCoins += bonus;
+          showBanner = true;
+          bannerTimer = 1.8;
+          bannerText = 'MILESTONE BONUS +$bonus';
+          bannerColor = const Color(0xFFFFD93D);
+        }
       }
     }
   }
@@ -688,7 +809,11 @@ class SpaceEscaperGame extends FlameGame
         currentPhysicsMode = 'normal';
         physicsSurvivedThisRun++;
         final factor = 1 + (distance / 10000).floor() * 0.2;
-        nextPhysicsChange = (30 + Random().nextDouble() * 30) / factor;
+        if (gameMode == GameMode.obstaclesOnly) {
+          nextPhysicsChange = 3 + Random().nextDouble() * 3;
+        } else {
+          nextPhysicsChange = (30 + Random().nextDouble() * 30) / factor;
+        }
       }
     }
 
@@ -728,17 +853,29 @@ class SpaceEscaperGame extends FlameGame
 
   void _activatePhysicsMode() {
     currentPhysicsMode = pendingPhysicsMode ?? 'normal';
-    final durations = {
-      'reversed': [15.0, 20.0],
-      'zero': [10.0, 15.0],
-      'double': [12.0, 18.0],
-      'inverted': [10.0, 15.0],
-      'magnetic': [15.0, 20.0],
-      'turbulence': [12.0, 18.0],
-      'hyperdrive': [8.0, 12.0],
-      'timewarp': [8.0, 12.0],
-      'singularity': [10.0, 15.0],
-    };
+    final durations = gameMode == GameMode.obstaclesOnly
+      ? {
+          'reversed': [4.0, 6.0],
+          'zero': [3.0, 5.0],
+          'double': [3.0, 5.0],
+          'inverted': [4.0, 6.0],
+          'magnetic': [3.0, 5.0],
+          'turbulence': [4.0, 6.0],
+          'hyperdrive': [2.5, 3.5],
+          'timewarp': [2.5, 3.5],
+          'singularity': [2.0, 3.0],
+        }
+      : {
+          'reversed': [15.0, 20.0],
+          'zero': [10.0, 15.0],
+          'double': [12.0, 18.0],
+          'inverted': [10.0, 15.0],
+          'magnetic': [15.0, 20.0],
+          'turbulence': [12.0, 18.0],
+          'hyperdrive': [8.0, 12.0],
+          'timewarp': [8.0, 12.0],
+          'singularity': [10.0, 15.0],
+        };
     final d = durations[currentPhysicsMode] ?? [10.0, 15.0];
     physicsDuration = d[0] + Random().nextDouble() * (d[1] - d[0]);
     physicsTimer = physicsDuration;
@@ -837,6 +974,7 @@ class SpaceEscaperGame extends FlameGame
       earned = (earned * 1.2).ceil();
     }
 
+    earned = (earned * coinModeMultiplier).ceil();
     runCoins += earned;
     combo++;
     comboTimer = 2.0;
@@ -876,26 +1014,33 @@ class SpaceEscaperGame extends FlameGame
     if (player.phasing) return;
 
     // Skill tree: second wind
-    final secondWindLevel = GameStorage.getSkillLevel('bonus_life');
-    if (secondWindLevel > 0) {
-      final chance = secondWindLevel * 0.1;
-      if (Random().nextDouble() < chance) {
-        player.makeInvincible();
-        showBanner = true;
-        bannerTimer = 1.5;
-        bannerText = 'SECOND WIND!';
-        bannerColor = Colors.cyan;
-        return;
+    if (!disableSecondWind) {
+      final secondWindLevel = GameStorage.getSkillLevel('bonus_life');
+      if (secondWindLevel > 0) {
+        final chance = secondWindLevel * 0.1;
+        if (Random().nextDouble() < chance) {
+          player.makeInvincible();
+          showBanner = true;
+          bannerTimer = 1.5;
+          bannerText = 'SECOND WIND!';
+          bannerColor = Colors.cyan;
+          return;
+        }
       }
     }
 
     add(ExplosionComponent(position: player.position.clone(), color: const Color(0xFFFF6B35)));
     screenEffects.triggerShake(duration: 0.8, intensity: 20);
+    _endRun();
+  }
+
+  void _endRun() {
+    if (gameState == GameState.gameOver) return;
     gameState = GameState.gameOver;
-    
-    // Check if we need to revert ship (for test drive)
-    // Actually we don't need to revert here, the UI will reload from storage next time
-    
+    if (gameMode == GameMode.survivalHell) {
+      final bonus = (timeSurvived ~/ 5);
+      if (bonus > 0) GameStorage.addStardust(bonus);
+    }
     GameStorage.updateAfterRun(
       distance: distance,
       coinsCollected: runCoins,
@@ -905,7 +1050,20 @@ class SpaceEscaperGame extends FlameGame
       physicsSurvived: physicsSurvivedThisRun,
       powerUpsCollected: powerUpsCollectedThisRun,
     );
-
     if (onGameOver != null) onGameOver!();
+  }
+
+  void endRun() {
+    _endRun();
+  }
+
+  // Public helper for Gauntlet to spawn next available boss
+  void startGauntletBoss() {
+    if (bossActive) return;
+    final next = allBosses.firstWhere(
+      (b) => !bossesDefeatedThisRun.contains(b.id),
+      orElse: () => allBosses.first,
+    );
+    _spawnBoss(next);
   }
 }

@@ -194,15 +194,27 @@ class AlienComponent extends PositionComponent
       canvas.drawCircle(Offset(w / 2, h / 2), w * 0.6, shieldPaint);
     }
 
-    // Health pips for multi-health aliens
+    // Health bar for multi-health aliens
     if (health > 1) {
-      for (int i = 0; i < health; i++) {
-        canvas.drawCircle(
-          Offset(w / 2 - (health - 1) * 4 + i * 8, h + 5),
-          3,
-          Paint()..color = const Color(0xFF22C55E),
-        );
-      }
+      final barW = w * 0.8;
+      final barH = 3.0;
+      final barX = (w - barW) / 2;
+      final barY = -8.0;
+
+      // Background
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(Rect.fromLTWH(barX, barY, barW, barH), const Radius.circular(1)),
+        Paint()..color = Colors.black54,
+      );
+
+      // Foreground
+      final hpPercent = (health / (alienType == 'shielder' ? 3.0 : (alienType == 'splitter' ? 2.0 : 5.0))).clamp(0.0, 1.0);
+      final hpColor = Color.lerp(Colors.red, const Color(0xFF22C55E), hpPercent)!;
+      
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(Rect.fromLTWH(barX, barY, barW * hpPercent, barH), const Radius.circular(1)),
+        Paint()..color = hpColor,
+      );
     }
   }
 }

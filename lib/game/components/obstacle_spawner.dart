@@ -200,71 +200,86 @@ class ObstacleComponent extends PositionComponent
   }
 
   void _renderBlackHole(Canvas canvas, double w, double h) {
-    final radius = w / 2;
-    final center = Offset(radius, radius);
+    final cx = w / 2;
+    final cy = h / 2;
+    final radius = w * 0.35; // Event horizon radius
     final t = game.timeSurvived;
 
-    final corePaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          Colors.black,
-          const Color(0xFF020617),
-        ],
-        stops: const [0.0, 1.0],
-      ).createShader(Rect.fromCircle(center: center, radius: radius * 0.7));
-    canvas.drawCircle(center, radius * 0.7, corePaint);
-
-    final ringPaint = Paint()
+    // 1. Accretion Disk (Back/Lensed Halo)
+    // Simulates the light form the back of the disk being bent over the top/bottom
+    final haloPaint = Paint()
       ..shader = SweepGradient(
         colors: [
-          Colors.black.withValues(alpha: 0.0),
-          const Color(0xFF111827),
-          const Color(0xFF1F2937),
-          const Color(0xFF111827),
-          Colors.black,
-          Colors.black.withValues(alpha: 0.0),
+          const Color(0xFFFFAB40), // Orange
+          const Color(0xFFFF3D00), // Red-Orange
+          const Color(0xFF212121), // Dark
+          const Color(0xFFFFAB40),
         ],
-        stops: const [0.0, 0.2, 0.4, 0.7, 0.9, 1.0],
-        transform: GradientRotation(t * 2.5),
-      ).createShader(Rect.fromCircle(center: center, radius: radius * 1.1));
-    canvas.drawCircle(center, radius * 1.1, ringPaint);
+        stops: const [0.0, 0.4, 0.8, 1.0],
+        transform: GradientRotation(t * 0.5),
+      ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: radius * 2.2))
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8); // Glowy
+    
+    // Draw the "halo" ring
+    canvas.drawCircle(Offset(cx, cy), radius * 1.5, haloPaint);
+    
+    // 2. Photon Sphere (Thin bright ring at EH edge)
+    final photonPaint = Paint()
+      ..color = Colors.white.withOpacity(0.9)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5);
+    canvas.drawCircle(Offset(cx, cy), radius * 1.05, photonPaint);
 
-    final lensPaint = Paint()
-      ..shader = RadialGradient(
+    // 3. Event Horizon (The Black Hole itself)
+    final ehPaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx, cy), radius, ehPaint);
+
+    // 4. Accretion Disk (Front Band)
+    // This is the horizontal disk crossing in front.
+    // It should look elliptical and slightly curved.
+    final diskRect = Rect.fromCenter(
+      center: Offset(cx, cy + radius * 0.2), // Slightly lower to show perspective
+      width: w * 0.95,
+      height: h * 0.25,
+    );
+
+    canvas.save();
+    // Tilt the disk slightly
+    canvas.translate(cx, cy);
+    canvas.rotate(0.1); // Slight tilt
+    canvas.translate(-cx, -cy);
+
+    final diskPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
         colors: [
-          Colors.black.withValues(alpha: 0.0),
-          const Color(0xFF111827).withValues(alpha: 0.2),
-          const Color(0xFF4B5563).withValues(alpha: 0.35),
-          Colors.black.withValues(alpha: 0.0),
+          const Color(0x00FFAB40), // Fade edges
+          const Color(0xFFFFAB40), // Bright Orange
+          Colors.white,            // Hot center
+          const Color(0xFFFF3D00), // Red
+          const Color(0x00FF3D00), // Fade edges
         ],
-        stops: const [0.0, 0.65, 0.9, 1.0],
-      ).createShader(Rect.fromCircle(center: center, radius: radius * 1.4));
-    canvas.drawCircle(center, radius * 1.4, lensPaint);
+        stops: const [0.0, 0.2, 0.45, 0.7, 1.0],
+      ).createShader(diskRect)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
 
-    final arcPaint = Paint()
-      ..color = const Color(0xFF9CA3AF).withValues(alpha: 0.25)
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-    for (int i = 0; i < 3; i++) {
-      final start = t * 1.8 + i * (pi * 2 / 3);
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius * 1.25),
-        start,
-        pi * 0.6,
-        false,
-        arcPaint,
-      );
-    }
+    canvas.drawOval(diskRect, diskPaint);
+    
+    // Doppler effect: make approaching side (left) brighter/whiter
+    // Overlaid bright spot on left
+    final dopplerPaint = Paint()
+      ..color = Colors.white.withOpacity(0.4)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx - w * 0.25, cy + radius * 0.2), width: w * 0.3, height: h * 0.15),
+      dopplerPaint,
+    );
 
-    final particlePaint = Paint()
-      ..color = const Color(0xFFD1D5DB).withValues(alpha: 0.7);
-    for (int i = 0; i < 10; i++) {
-      final angle = t * 3 + i * (pi / 5);
-      final dist = radius * 1.6 + sin(t * 4 + i) * radius * 0.2;
-      final dx = center.dx + cos(angle) * dist;
-      final dy = center.dy + sin(angle) * dist;
-      canvas.drawCircle(Offset(dx, dy), 1.5, particlePaint);
-    }
+    canvas.restore();
   }
 
   void _renderSolarFlare(Canvas canvas, double w, double h) {

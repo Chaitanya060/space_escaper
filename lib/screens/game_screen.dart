@@ -11,7 +11,9 @@ import 'main_menu_screen.dart';
 
 class GameScreen extends StatefulWidget {
   final String? overrideShipId;
-  const GameScreen({super.key, this.overrideShipId});
+  final GameMode? mode;
+  final int? timeLimitSec;
+  const GameScreen({super.key, this.overrideShipId, this.mode, this.timeLimitSec});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -27,7 +29,11 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
-    _game = SpaceEscaperGame(overrideShipId: widget.overrideShipId);
+    _game = SpaceEscaperGame(
+      overrideShipId: widget.overrideShipId,
+      mode: widget.mode,
+      timeLimitSec: widget.timeLimitSec,
+    );
     _game.onGameOver = () {
       setState(() { _showGameOver = true; });
     };
@@ -138,6 +144,18 @@ class _GameScreenState extends State<GameScreen> {
                 // Currency (Coins + Stardust)
                 Row(
                   children: [
+                    if (_game.modeTimeLimit != null)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Text(
+                          '${_game.modeTimeRemaining.toInt()}s',
+                          style: GoogleFonts.orbitron(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF00D9FF),
+                          ),
+                        ),
+                      ),
                     // Coins
                     Container(
                       width: 16, height: 16,
@@ -234,47 +252,112 @@ class _GameScreenState extends State<GameScreen> {
             // Boss health bar (global)
             if (_game.bossActive && _game.currentBoss != null)
               Container(
-                margin: const EdgeInsets.only(top: 6),
-                padding: const EdgeInsets.all(8),
+                margin: const EdgeInsets.only(top: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.black.withValues(alpha: 0.8),
+                      const Color(0xFF0F172A).withValues(alpha: 0.9),
+                      Colors.black.withValues(alpha: 0.8),
+                    ],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _game.currentBoss!.config.color.withValues(alpha: 0.5),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _game.currentBoss!.config.color.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      spreadRadius: 2,
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'BOSS',
-                          style: GoogleFonts.orbitron(
-                            fontSize: 10,
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 2,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              _game.currentBoss!.config.emoji,
+                              style: const TextStyle(fontSize: 20),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _game.currentBoss!.config.name.toUpperCase(),
+                              style: GoogleFonts.orbitron(
+                                fontSize: 14,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.5,
+                                shadows: [
+                                  Shadow(
+                                    color: _game.currentBoss!.config.color,
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                         Text(
-                          '${_game.currentBoss!.config.emoji} ${_game.currentBoss!.config.name.toUpperCase()}',
+                          '${(_game.currentBoss!.health / _game.currentBoss!.maxHealth * 100).toInt()}%',
                           style: GoogleFonts.orbitron(
-                            fontSize: 10,
+                            fontSize: 14,
                             color: _game.currentBoss!.config.color,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        minHeight: 8,
-                        value: (_game.currentBoss!.health / _game.currentBoss!.maxHealth).clamp(0.0, 1.0),
-                        backgroundColor: const Color(0xFF1E293B),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          _game.currentBoss!.config.color,
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 14,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Stack(
+                          children: [
+                            // Background
+                            Container(color: const Color(0xFF1E293B)),
+                            // Health bar
+                            FractionallySizedBox(
+                              widthFactor: (_game.currentBoss!.health / _game.currentBoss!.maxHealth).clamp(0.0, 1.0),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      _game.currentBoss!.config.color.withValues(alpha: 0.6),
+                                      _game.currentBoss!.config.color,
+                                    ],
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _game.currentBoss!.config.color.withValues(alpha: 0.5),
+                                      blurRadius: 6,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // Glare effect
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              height: 6,
+                              child: Container(
+                                color: Colors.white.withValues(alpha: 0.1),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

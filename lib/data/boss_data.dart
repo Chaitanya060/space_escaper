@@ -68,96 +68,96 @@ const List<BossConfig> allBosses = [
   // ── TIER 1: EARLY (5k-17k) ──
   BossConfig(
     id: 'solar_titan', name: 'Solar Titan', emoji: '☀️', tier: 1,
-    spawnDistance: 5000, maxHealth: 1500, width: 120, height: 100,
+    spawnDistance: 5000, maxHealth: 800, width: 120, height: 100, // Nerfed HP 1500->800
     movement: BossMovement.sway,
     color: Color(0xFFFFD700), glowColor: Color(0x80FFD700),
     rewardCoins: 800, rewardPowerUp: 'shield',
     weakness: 'Shoot core when shield drops',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Solar Flares', type: BossAttackType.radialBurst, projectileCount: 8, speed: 250),
-        BossAttack(name: 'Heat Wave', type: BossAttackType.aoeBlast, cooldown: 4.0),
+        BossAttack(name: 'Solar Flares', type: BossAttackType.radialBurst, projectileCount: 6, speed: 180, cooldown: 3.0),
+        BossAttack(name: 'Heat Wave', type: BossAttackType.aoeBlast, cooldown: 5.0),
       ]),
-      BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.4, attacks: [
-        BossAttack(name: 'Solar Flares', type: BossAttackType.radialBurst, projectileCount: 12, speed: 300),
-        BossAttack(name: 'Corona Shield', type: BossAttackType.shieldActivate, cooldown: 8.0),
-        BossAttack(name: 'Sunspot Mines', type: BossAttackType.summonHazards, projectileCount: 6),
+      BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.2, attacks: [
+        BossAttack(name: 'Solar Flares', type: BossAttackType.radialBurst, projectileCount: 8, speed: 220),
+        BossAttack(name: 'Corona Shield', type: BossAttackType.shieldActivate, cooldown: 10.0),
+        BossAttack(name: 'Sunspot Mines', type: BossAttackType.summonHazards, projectileCount: 4),
       ]),
     ],
   ),
   BossConfig(
     id: 'void_devourer', name: 'Void Devourer', emoji: '🌀', tier: 1,
-    spawnDistance: 8000, maxHealth: 2500, width: 140, height: 120,
+    spawnDistance: 8000, maxHealth: 1200, width: 140, height: 120, // Nerfed HP 2500->1200
     movement: BossMovement.chase,
     color: Color(0xFF8B5CF6), glowColor: Color(0x808B5CF6),
     rewardCoins: 1200, rewardPowerUp: 'ultraMagnet',
     weakness: 'Destroy tentacles to stun',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Gravity Vortex', type: BossAttackType.vortexPull, cooldown: 3.0),
-        BossAttack(name: 'Void Tendrils', type: BossAttackType.radialBurst, projectileCount: 8, speed: 200),
+        BossAttack(name: 'Gravity Vortex', type: BossAttackType.vortexPull, cooldown: 4.0),
+        BossAttack(name: 'Void Tendrils', type: BossAttackType.radialBurst, projectileCount: 6, speed: 160),
       ]),
-      BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.3, attacks: [
-        BossAttack(name: 'Dark Matter Orbs', type: BossAttackType.summonHazards, projectileCount: 4),
-        BossAttack(name: 'Singularity Pulse', type: BossAttackType.aoeBlast, cooldown: 5.0),
-        BossAttack(name: 'Void Tendrils', type: BossAttackType.radialBurst, projectileCount: 12, speed: 250),
+      BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.2, attacks: [
+        BossAttack(name: 'Dark Matter Orbs', type: BossAttackType.summonHazards, projectileCount: 3),
+        BossAttack(name: 'Singularity Pulse', type: BossAttackType.aoeBlast, cooldown: 6.0),
+        BossAttack(name: 'Void Tendrils', type: BossAttackType.radialBurst, projectileCount: 8, speed: 200),
       ]),
     ],
   ),
   BossConfig(
     id: 'ai_dreadnought', name: 'AI Dreadnought', emoji: '🤖', tier: 1,
-    spawnDistance: 11000, maxHealth: 3500, width: 130, height: 110,
+    spawnDistance: 11000, maxHealth: 1600, width: 130, height: 110, // Nerfed HP 3500->1600
     movement: BossMovement.patrol,
     color: Color(0xFF374151), glowColor: Color(0x8000D9FF),
     rewardCoins: 1800, rewardPowerUp: 'damageBoost',
     weakness: 'Destroy power cores on sides',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Laser Grid', type: BossAttackType.laserSweep, cooldown: 3.0),
-        BossAttack(name: 'Missile Storm', type: BossAttackType.homingMissiles, projectileCount: 10, speed: 180),
+        BossAttack(name: 'Laser Grid', type: BossAttackType.laserSweep, cooldown: 4.0),
+        BossAttack(name: 'Missile Storm', type: BossAttackType.homingMissiles, projectileCount: 6, speed: 150),
       ]),
-      BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.5, attacks: [
-        BossAttack(name: 'Missile Storm', type: BossAttackType.homingMissiles, projectileCount: 20, speed: 200),
-        BossAttack(name: 'Defense Turrets', type: BossAttackType.rapidFire, projectileCount: 6),
-        BossAttack(name: 'EMP Blast', type: BossAttackType.debuffPlayer, cooldown: 10.0),
+      BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.3, attacks: [
+        BossAttack(name: 'Missile Storm', type: BossAttackType.homingMissiles, projectileCount: 10, speed: 180),
+        BossAttack(name: 'Defense Turrets', type: BossAttackType.rapidFire, projectileCount: 4),
+        BossAttack(name: 'EMP Blast', type: BossAttackType.debuffPlayer, cooldown: 12.0),
       ]),
     ],
   ),
   BossConfig(
     id: 'thunder_leviathan', name: 'Thunder Leviathan', emoji: '⚡', tier: 1,
-    spawnDistance: 14000, maxHealth: 4500, width: 140, height: 110,
+    spawnDistance: 14000, maxHealth: 2000, width: 140, height: 110, // Nerfed HP 4500->2000
     movement: BossMovement.charge,
     color: Color(0xFFFBBF24), glowColor: Color(0x80FBBF24),
     rewardCoins: 2500, rewardPowerUp: 'bulletTime',
     weakness: 'Only vulnerable during charge (glows yellow)',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Chain Lightning', type: BossAttackType.radialBurst, projectileCount: 10, speed: 350),
-        BossAttack(name: 'Thunder Dive', type: BossAttackType.chargeRush, cooldown: 5.0),
+        BossAttack(name: 'Chain Lightning', type: BossAttackType.radialBurst, projectileCount: 8, speed: 250),
+        BossAttack(name: 'Thunder Dive', type: BossAttackType.chargeRush, cooldown: 6.0),
       ]),
-      BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.5, attacks: [
-        BossAttack(name: 'Static Field', type: BossAttackType.summonHazards, projectileCount: 8),
-        BossAttack(name: 'Lightning Storm', type: BossAttackType.radialBurst, projectileCount: 20, speed: 400),
-        BossAttack(name: 'EMP', type: BossAttackType.debuffPlayer, cooldown: 8.0),
+      BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.3, attacks: [
+        BossAttack(name: 'Static Field', type: BossAttackType.summonHazards, projectileCount: 6),
+        BossAttack(name: 'Lightning Storm', type: BossAttackType.radialBurst, projectileCount: 12, speed: 300),
+        BossAttack(name: 'EMP', type: BossAttackType.debuffPlayer, cooldown: 10.0),
       ]),
     ],
   ),
   BossConfig(
     id: 'cryo_colossus', name: 'Cryo Colossus', emoji: '🧊', tier: 1,
-    spawnDistance: 17000, maxHealth: 5500, width: 130, height: 120,
+    spawnDistance: 17000, maxHealth: 2500, width: 130, height: 120, // Nerfed HP 5500->2500
     movement: BossMovement.sway,
     color: Color(0xFF06B6D4), glowColor: Color(0x8006B6D4),
     rewardCoins: 3200, rewardPowerUp: 'comboFreeze',
     weakness: 'Fire weapons deal 3x damage',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Ice Spike Rain', type: BossAttackType.radialBurst, projectileCount: 15, speed: 200),
-        BossAttack(name: 'Freeze Beam', type: BossAttackType.laserSweep, cooldown: 4.0),
+        BossAttack(name: 'Ice Spike Rain', type: BossAttackType.radialBurst, projectileCount: 10, speed: 180),
+        BossAttack(name: 'Freeze Beam', type: BossAttackType.laserSweep, cooldown: 5.0),
       ]),
-      BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.3, armorMult: 0.8, attacks: [
-        BossAttack(name: 'Blizzard', type: BossAttackType.aoeBlast, cooldown: 6.0),
-        BossAttack(name: 'Ice Wall Maze', type: BossAttackType.summonHazards, projectileCount: 10),
-        BossAttack(name: 'Permafrost', type: BossAttackType.debuffPlayer, cooldown: 8.0),
+      BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.2, armorMult: 0.8, attacks: [
+        BossAttack(name: 'Blizzard', type: BossAttackType.aoeBlast, cooldown: 8.0),
+        BossAttack(name: 'Ice Wall Maze', type: BossAttackType.summonHazards, projectileCount: 8),
+        BossAttack(name: 'Permafrost', type: BossAttackType.debuffPlayer, cooldown: 10.0),
       ]),
     ],
   ),
