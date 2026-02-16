@@ -12,8 +12,7 @@ import 'main_menu_screen.dart';
 class GameScreen extends StatefulWidget {
   final String? overrideShipId;
   final GameMode? mode;
-  final int? timeLimitSec;
-  const GameScreen({super.key, this.overrideShipId, this.mode, this.timeLimitSec});
+  const GameScreen({super.key, this.overrideShipId, this.mode});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -32,7 +31,6 @@ class _GameScreenState extends State<GameScreen> {
     _game = SpaceEscaperGame(
       overrideShipId: widget.overrideShipId,
       mode: widget.mode,
-      timeLimitSec: widget.timeLimitSec,
     );
     _game.onGameOver = () {
       setState(() { _showGameOver = true; });
@@ -103,6 +101,7 @@ class _GameScreenState extends State<GameScreen> {
           // HUD (Stats)
           if (!_showPause && !_showGameOver) ...[
             _buildHUD(),
+            _buildConsumableBar(),
             _buildControls(),
             _buildPauseButton(),
           ],
@@ -144,18 +143,6 @@ class _GameScreenState extends State<GameScreen> {
                 // Currency (Coins + Stardust)
                 Row(
                   children: [
-                    if (_game.modeTimeLimit != null)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: Text(
-                          '${_game.modeTimeRemaining.toInt()}s',
-                          style: GoogleFonts.orbitron(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF00D9FF),
-                          ),
-                        ),
-                      ),
                     // Coins
                     Container(
                       width: 16, height: 16,
@@ -249,119 +236,23 @@ class _GameScreenState extends State<GameScreen> {
                 ),
               ),
 
-            // Boss health bar (global)
+            // Boss name badge (health bar is now inside the boss)
             if (_game.bossActive && _game.currentBoss != null)
               Container(
-                margin: const EdgeInsets.only(top: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                margin: const EdgeInsets.only(top: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.black.withValues(alpha: 0.8),
-                      const Color(0xFF0F172A).withValues(alpha: 0.9),
-                      Colors.black.withValues(alpha: 0.8),
-                    ],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _game.currentBoss!.config.color.withValues(alpha: 0.5),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _game.currentBoss!.config.color.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                    ),
-                  ],
+                  color: _game.currentBoss!.config.color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _game.currentBoss!.config.color.withValues(alpha: 0.4)),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              _game.currentBoss!.config.emoji,
-                              style: const TextStyle(fontSize: 20),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _game.currentBoss!.config.name.toUpperCase(),
-                              style: GoogleFonts.orbitron(
-                                fontSize: 14,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.5,
-                                shadows: [
-                                  Shadow(
-                                    color: _game.currentBoss!.config.color,
-                                    blurRadius: 8,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          '${(_game.currentBoss!.health / _game.currentBoss!.maxHealth * 100).toInt()}%',
-                          style: GoogleFonts.orbitron(
-                            fontSize: 14,
-                            color: _game.currentBoss!.config.color,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 14,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: Stack(
-                          children: [
-                            // Background
-                            Container(color: const Color(0xFF1E293B)),
-                            // Health bar
-                            FractionallySizedBox(
-                              widthFactor: (_game.currentBoss!.health / _game.currentBoss!.maxHealth).clamp(0.0, 1.0),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      _game.currentBoss!.config.color.withValues(alpha: 0.6),
-                                      _game.currentBoss!.config.color,
-                                    ],
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _game.currentBoss!.config.color.withValues(alpha: 0.5),
-                                      blurRadius: 6,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            // Glare effect
-                            Positioned(
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              height: 6,
-                              child: Container(
-                                color: Colors.white.withValues(alpha: 0.1),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  '${_game.currentBoss!.config.emoji} ${_game.currentBoss!.config.name.toUpperCase()}',
+                  style: GoogleFonts.orbitron(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: _game.currentBoss!.config.color,
+                  ),
                 ),
               ),
 
@@ -469,6 +360,92 @@ class _GameScreenState extends State<GameScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildConsumableBar() {
+    return Positioned(
+      left: 8,
+      bottom: 140,
+      child: Column(
+        children: allConsumables.map((c) {
+          final owned = GameStorage.getConsumableCount(c.type.name);
+          final isUsable = owned > 0 && _game.gameState == GameState.playing;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: GestureDetector(
+              onTap: isUsable ? () => _useConsumableInGame(c) : null,
+              child: Opacity(
+                opacity: isUsable ? 1.0 : 0.35,
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: c.color.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: c.color.withValues(alpha: 0.5), width: 1.5),
+                  ),
+                  child: Stack(
+                    children: [
+                      Center(child: Icon(c.icon, color: c.color, size: 24)),
+                      Positioned(
+                        right: 4,
+                        bottom: 2,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.black87,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'x$owned',
+                            style: GoogleFonts.orbitron(
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  void _useConsumableInGame(ConsumableInfo c) {
+    if (!GameStorage.useConsumable(c.type.name)) return;
+
+    setState(() {});
+
+    switch (c.type) {
+      case ConsumableType.headStart:
+        _game.distance += 500;
+        _game.currentSpeed = _game.baseSpeed * 1.5;
+        _game.player.makeInvincible();
+        _game.activePowerUps[PowerUpType.invincibility] = 5.0;
+        break;
+      case ConsumableType.luckyClover:
+        _game.luckyCloverActive = true;
+        break;
+      case ConsumableType.shieldCharge:
+        _game.activePowerUps[PowerUpType.shield] = 99999;
+        _game.player.makeInvincible();
+        break;
+      case ConsumableType.shieldDuration:
+        _game.shieldDurationMultiplier = 1.5;
+        break;
+    }
+
+    // Show banner in game
+    _game.showBanner = true;
+    _game.bannerTimer = 1.5;
+    _game.bannerText = '${c.name.toUpperCase()} ACTIVATED!';
+    _game.bannerColor = c.color;
   }
 
   Widget _buildPauseButton() {

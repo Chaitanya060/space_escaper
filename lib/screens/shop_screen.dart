@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/game_storage.dart';
-import '../data/ship_data.dart';
 import '../data/powerup_data.dart';
 import '../data/progression_data.dart';
-import 'game_screen.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -20,7 +18,7 @@ class _ShopScreenState extends State<ShopScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -59,7 +57,6 @@ class _ShopScreenState extends State<ShopScreen>
           tabs: const [
             Tab(text: 'ITEMS'),
             Tab(text: 'SKILLS'),
-            Tab(text: 'SHIPS'),
           ],
         ),
       ),
@@ -73,7 +70,6 @@ class _ShopScreenState extends State<ShopScreen>
               children: [
                 _buildConsumablesTab(),
                 _buildSkillsTab(),
-                _buildShipsTab(),
               ],
             ),
           ),
@@ -294,246 +290,5 @@ class _ShopScreenState extends State<ShopScreen>
         );
       },
     );
-  }
-
-  Widget _buildShipsTab() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: ships.length,
-      itemBuilder: (context, index) {
-        final ship = ships[index];
-        final isUnlocked = GameStorage.isShipUnlocked(ship.id);
-        final isSelected = GameStorage.selectedShip == ship.id;
-        final rarityColor = Rarity.getColor(ship.rarity);
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0A1929),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isSelected
-                  ? rarityColor
-                  : isUnlocked
-                      ? rarityColor.withValues(alpha: 0.3)
-                      : const Color(0xFF1E293B),
-              width: isSelected ? 2 : 1,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Ship icon
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: ship.color.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: ship.color.withValues(alpha: 0.3)),
-                      ),
-                      child: Icon(Icons.rocket_launch,
-                          color: isUnlocked ? ship.color : Colors.white24, size: 28),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(ship.name,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.orbitron(
-                                        color: isUnlocked ? Colors.white : Colors.white38,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15)),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: rarityColor.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  Rarity.getLabel(ship.rarity),
-                                  style: GoogleFonts.orbitron(
-                                      color: rarityColor,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(ship.abilityDesc,
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
-                          Text(ship.description,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: Colors.white38, fontSize: 11)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                
-                // Actions (Select, Unlock, Test Drive)
-                if (isUnlocked)
-                  isSelected
-                      ? Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                             Text("EQUIPPED", style: GoogleFonts.orbitron(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
-                             const SizedBox(width: 5),
-                             const Icon(Icons.check_circle, color: Colors.greenAccent),
-                          ],
-                        )
-                      : Align(
-                          alignment: Alignment.centerRight,
-                          child: _actionButton(
-                             "SELECT", 
-                             const Color(0xFF00D9FF),
-                             () {
-                                GameStorage.selectedShip = ship.id;
-                                setState(() {});
-                             },
-                          ),
-                        )
-                else
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                       // Test Drive Button
-                       if (GameStorage.totalCoins >= ship.testDriveCost)
-                         Padding(
-                           padding: const EdgeInsets.only(right: 10),
-                           child: _actionButton(
-                             "TEST DRIVE (${ship.testDriveCost})",
-                             Colors.orangeAccent,
-                             () {
-                                _startTestDrive(ship);
-                             },
-                           ),
-                         ),
-
-                       // Unlock Button
-                       if (ship.unlockMethod == 'ads')
-                         _buildAdUnlockButton(ship)
-                       else if (ship.unlockMethod == 'purchase')
-                         _actionButton(
-                            "BUY ${ship.cost}", 
-                            const Color(0xFFFFD93D),
-                            () {
-                               if (GameStorage.spendCoins(ship.cost)) {
-                                 GameStorage.unlockShip(ship.id);
-                                 setState(() {});
-                               }
-                            },
-                            icon: Icons.monetization_on,
-                            isDisabled: GameStorage.totalCoins < ship.cost,
-                         ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildAdUnlockButton(ShipData ship) {
-    int watched = GameStorage.getAdProgress(ship.id);
-    return _actionButton(
-       "WATCH AD ($watched/${ship.adReq})",
-       const Color(0xFF2979FF),
-       () {
-          // Mock Ad Watch
-          _mockWatchAd(ship);
-       },
-       icon: Icons.play_arrow_rounded,
-    );
-  }
-
-  void _mockWatchAd(ShipData ship) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-           backgroundColor: const Color(0xFF0A1929),
-           title: const Text("Watching Ad...", style: TextStyle(color: Colors.white)),
-           content: const LinearProgressIndicator(),
-        ),
-      );
-
-      Future.delayed(const Duration(seconds: 2), () {
-          Navigator.pop(context); // Close dialog
-          GameStorage.incrementAdProgress(ship.id);
-          
-          if (GameStorage.getAdProgress(ship.id) >= ship.adReq) {
-              GameStorage.unlockShip(ship.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Ship Unlocked!"), backgroundColor: Colors.green),
-              );
-          }
-          setState(() {});
-      });
-  }
-
-  void _startTestDrive(ShipData ship) {
-      if (GameStorage.spendCoins(ship.testDriveCost)) {
-          setState(() {}); // Update coin display
-           Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => GameScreen(overrideShipId: ship.id),
-            ),
-          );
-      }
-  }
-
-  Widget _actionButton(String label, Color color, VoidCallback onTap, {IconData? icon, bool isDisabled = false}) {
-      return GestureDetector(
-        onTap: isDisabled ? null : onTap,
-        child: Opacity(
-          opacity: isDisabled ? 0.4 : 1.0,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: color.withValues(alpha: 0.5)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[
-                   Icon(icon, color: color, size: 16),
-                   const SizedBox(width: 4),
-                ],
-                Text(
-                  label,
-                  style: GoogleFonts.orbitron(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
   }
 }

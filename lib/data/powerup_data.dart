@@ -132,6 +132,7 @@ enum ConsumableType {
   headStart,
   luckyClover,
   shieldCharge,
+  shieldDuration,
 }
 
 class ConsumableInfo {
@@ -178,6 +179,14 @@ const List<ConsumableInfo> allConsumables = [
     coinCost: 250,
     icon: Icons.shield,
     color: Color(0xFF8B5CF6),
+  ),
+  ConsumableInfo(
+    type: ConsumableType.shieldDuration,
+    name: 'Extended Shield',
+    description: '+50% longer shield duration',
+    coinCost: 300,
+    icon: Icons.timer_outlined,
+    color: Color(0xFF06B6D4),
   ),
 ];
 

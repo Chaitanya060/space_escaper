@@ -51,7 +51,7 @@ class CoinComponent extends PositionComponent
       magnetRadius *= 3.0;
     }
     // Skill tree bonus
-    final magnetLevel = GameStorage.getSkillLevel('magnet_range');
+    final magnetLevel = GameStorage.getSkillLevel('magnet_range', shipId: game.currentShip.id);
     magnetRadius *= (1 + magnetLevel * 0.1);
     if (dist < magnetRadius && dist > 0) {
       final strength = (1 - dist / magnetRadius) * 400;

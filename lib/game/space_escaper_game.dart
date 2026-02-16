@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
@@ -22,7 +23,7 @@ import 'components/satellite_component.dart';
 import 'components/explosion_component.dart';
 
 enum GameState { playing, paused, gameOver }
-enum GameMode { endless, zen, hardcore, timeAttack, coinFrenzy, survivalHell, bossRush, obstaclesOnly, gauntlet }
+enum GameMode { endless, hardcore, survivalHell, bossRush, gauntlet }
 
 class SpaceEscaperGame extends FlameGame
     with HasCollisionDetection, PanDetector {
@@ -38,12 +39,9 @@ class SpaceEscaperGame extends FlameGame
 
   GameState gameState = GameState.playing;
   GameMode gameMode = GameMode.endless;
-  double? modeTimeLimit;
-  double modeTimeRemaining = 0;
   bool obstaclesEnabled = true;
   bool coinsEnabled = true;
   bool bossesEnabled = true;
-  double coinModeMultiplier = 1.0;
   int bossRushTarget = 5;
   int bossRushDefeated = 0;
   bool disableSecondWind = false;
@@ -71,9 +69,11 @@ class SpaceEscaperGame extends FlameGame
   int bossesKilledThisRun = 0;
   int physicsSurvivedThisRun = 0;
   int powerUpsCollectedThisRun = 0;
+  int _xpGrantedFromDistance = 0;
 
   // Active power-ups
   final Map<PowerUpType, double> activePowerUps = {};
+  double shieldDurationMultiplier = 1.0;
 
   // Kill streak (Plasma Phoenix)
   int killStreak = 0;
@@ -119,12 +119,8 @@ class SpaceEscaperGame extends FlameGame
   VoidCallback? onGameOver;
   VoidCallback? onPauseRequest;
   
-  SpaceEscaperGame({this.overrideShipId, GameMode? mode, int? timeLimitSec}) {
+  SpaceEscaperGame({this.overrideShipId, GameMode? mode}) {
     if (mode != null) gameMode = mode;
-    if (timeLimitSec != null) {
-      modeTimeLimit = timeLimitSec.toDouble();
-      modeTimeRemaining = modeTimeLimit!;
-    }
   }
 
   @override
@@ -150,17 +146,10 @@ class SpaceEscaperGame extends FlameGame
     // Use override if present (Test Drive), otherwise storage
     final shipId = overrideShipId ?? GameStorage.selectedShip;
     currentShip = getShipById(shipId);
+    _xpGrantedFromDistance = 0;
 
     // Mode setup
-    if (gameMode == GameMode.timeAttack) {
-      bossesEnabled = false;
-      modeTimeLimit ??= 90;
-      modeTimeRemaining = modeTimeLimit!;
-    } else if (gameMode == GameMode.coinFrenzy) {
-      obstaclesEnabled = false;
-      bossesEnabled = false;
-      coinModeMultiplier = 3.0;
-    } else if (gameMode == GameMode.survivalHell) {
+    if (gameMode == GameMode.survivalHell) {
       obstacleDensityMultiplier = 5.0;
       baseSpeed *= 0.8;
       disableSecondWind = true;
@@ -168,27 +157,13 @@ class SpaceEscaperGame extends FlameGame
       obstaclesEnabled = false;
       coinsEnabled = true;
       bossesEnabled = true;
-    } else if (gameMode == GameMode.obstaclesOnly) {
-      coinsEnabled = false;
-      bossesEnabled = false;
-      unlockedObstacles.addAll({'alien','blackhole','satellite','solarflare','meteor','wormhole'});
     } else if (gameMode == GameMode.gauntlet) {
       // Uses existing systems, special waves later
       bossesEnabled = true;
     }
 
-    // Auto-activate consumables if allowed
-    if (GameStorage.useConsumable(ConsumableType.headStart.name)) {
-      headStartActive = true;
-    }
-    if (GameStorage.useConsumable(ConsumableType.luckyClover.name)) {
-      luckyCloverActive = true;
-    }
-    if (! (gameMode == GameMode.survivalHell)) {
-      if (GameStorage.useConsumable(ConsumableType.shieldCharge.name)) {
-        shieldChargeActive = true;
-      }
-    }
+    // Legacy auto-consume removed.
+    // Consumables are now handled via GameStorage.consumeActiveItems() at the end of onLoad.
 
     // Background
     starfield = StarfieldBackground();
@@ -206,19 +181,16 @@ class SpaceEscaperGame extends FlameGame
     obstacleSpawner = ObstacleSpawner(gameRef: this);
     coinSpawner = CoinSpawner(gameRef: this);
 
-    if (gameMode != GameMode.zen && obstaclesEnabled) {
+    if (obstaclesEnabled) {
       add(obstacleSpawner);
     }
     if (coinsEnabled) {
       add(coinSpawner);
-      if (gameMode == GameMode.coinFrenzy) {
-        coinSpawner.spawnInterval = 0.8;
-      }
     }
 
     // Enemy wave system
     waveSystem = EnemyWaveSystem();
-    if (gameMode != GameMode.zen && gameMode != GameMode.bossRush && gameMode != GameMode.coinFrenzy) {
+    if (gameMode != GameMode.bossRush) {
       add(waveSystem);
     }
 
@@ -247,15 +219,37 @@ class SpaceEscaperGame extends FlameGame
 
     currentSpeed = baseSpeed;
 
-    // Consumable effects
-    if (headStartActive) {
+    // ═══════════════════════════════════════
+    //  CONSUMABLE EFFECTS (from Loadout selection)
+    // ═══════════════════════════════════════
+    final consumables = GameStorage.consumeActiveItems();
+
+    // HEAD START: Skip ahead 500m with speed boost + 5s invincibility
+    if (consumables.contains('headStart')) {
       distance = 500;
-      currentSpeed = baseSpeed * 1.3;
+      currentSpeed = baseSpeed * 1.5;
+      player.makeInvincible(); // Brief invincibility
+      activePowerUps[PowerUpType.invincibility] = 5.0;
     }
-    if (shieldChargeActive) {
-      player.makeInvincible();
+
+    // LUCKY CLOVER: +20% more coins throughout the run
+    if (consumables.contains('luckyClover')) {
+      luckyCloverActive = true;
     }
-    
+
+    // SHIELD CHARGE: Start with an active shield (not in Survival Hell)
+    if (consumables.contains('shieldCharge')) {
+      if (gameMode != GameMode.survivalHell) {
+        activePowerUps[PowerUpType.shield] = 99999; // Lasts until hit
+        player.makeInvincible();
+      }
+    }
+
+    // EXTENDED SHIELD: All future shields last 50% longer
+    if (consumables.contains('shieldDuration')) {
+      shieldDurationMultiplier = 1.5;
+    }
+
     isLoaded = true;
 
     if (gameMode == GameMode.bossRush) {
@@ -297,26 +291,11 @@ class SpaceEscaperGame extends FlameGame
     timeSurvived += dt;
     distance += currentSpeed * dt;
 
-    if (gameMode == GameMode.timeAttack) {
-      if (modeTimeLimit != null) {
-        modeTimeRemaining = max(0, modeTimeRemaining - dt);
-        if (modeTimeRemaining <= 0) {
-          _endRun();
-          return;
-        }
-      }
-    }
-
-    if (gameMode == GameMode.coinFrenzy) {
-      if (modeTimeLimit == null) {
-        modeTimeLimit = 120;
-        modeTimeRemaining = 120;
-      }
-      modeTimeRemaining = max(0, modeTimeRemaining - dt);
-      if (modeTimeRemaining <= 0) {
-        _endRun();
-        return;
-      }
+    final totalXpFromDistance = XpGain.fromDistance(distance);
+    final deltaXp = totalXpFromDistance - _xpGrantedFromDistance;
+    if (deltaXp > 0) {
+      GameStorage.addXp(deltaXp);
+      _xpGrantedFromDistance = totalXpFromDistance;
     }
 
     if (gameMode == GameMode.bossRush && bossRushIntermission > 0) {
@@ -338,11 +317,6 @@ class SpaceEscaperGame extends FlameGame
       speedMultiplier += lateFactor * 0.04;
     }
     currentSpeed = baseSpeed * speedMultiplier;
-    if (gameMode == GameMode.timeAttack) {
-      final limit = (modeTimeLimit ?? 90);
-      final boost = 1 + (timeSurvived / limit) * 0.5;
-      currentSpeed *= boost;
-    }
 
     // Physics speed modifiers
     if (currentPhysicsMode == 'hyperdrive') {
@@ -430,8 +404,13 @@ class SpaceEscaperGame extends FlameGame
     double duration = info.duration;
 
     // Skill bonus
-    final extLevel = GameStorage.getSkillLevel('powerup_duration');
+    final extLevel = GameStorage.getSkillLevel('powerup_duration', shipId: currentShip.id);
     duration *= (1 + extLevel * 0.1);
+
+    // Consumable bonus (Shield)
+    if (type == PowerUpType.shield) {
+      duration *= shieldDurationMultiplier;
+    }
 
     activePowerUps[type] = duration;
     powerUpsCollectedThisRun++;
@@ -439,7 +418,7 @@ class SpaceEscaperGame extends FlameGame
     // Immediate effects
     switch (type) {
       case PowerUpType.shield:
-        player.makeInvincible();
+        player.makeInvincible(); // Visual only, logic tracked in activePowerUps
         break;
       case PowerUpType.coinStorm:
         for (int i = 0; i < 20; i++) {
@@ -501,7 +480,7 @@ class SpaceEscaperGame extends FlameGame
   // ═══════════════════════════════════════
 
   void _checkBossSpawn() {
-    if (bossActive || gameMode == GameMode.zen) return;
+    if (bossActive) return;
     if (gameMode == GameMode.bossRush && bossRushIntermission > 0) return;
     if (!bossesEnabled) return;
     final boss = getBossForDistance(distance, bossesDefeatedThisRun);
@@ -573,7 +552,7 @@ class SpaceEscaperGame extends FlameGame
     fireCooldownTimer = _getFireCooldownForShip();
 
     // Skill tree: fire rate reduction
-    final fireRateLevel = GameStorage.getSkillLevel('fire_rate');
+    final fireRateLevel = GameStorage.getSkillLevel('fire_rate', shipId: currentShip.id);
     fireCooldownTimer *= (1 - fireRateLevel * 0.05);
 
     // Plasma Phoenix kill streak boost
@@ -585,7 +564,7 @@ class SpaceEscaperGame extends FlameGame
     final damaged = hasPowerUp(PowerUpType.damageBoost);
     
     // Skill tree: bullet speed bonus
-    final bsLevel = GameStorage.getSkillLevel('bullet_speed');
+    final bsLevel = GameStorage.getSkillLevel('bullet_speed', shipId: currentShip.id);
     final speedBonus = 1.0 + bsLevel * 0.05;
 
     // Helper to spawn bullets
@@ -744,9 +723,6 @@ class SpaceEscaperGame extends FlameGame
       case WeaponType.singularityGenesis:
          spawn(Vector2(0, 0), 0, type: BulletType.blackHole, size: Vector2(60,60), dmg: 100);
          break;
-
-      default:
-         spawn(Vector2(0, 0), 0);
     }
   }
 
@@ -786,14 +762,6 @@ class SpaceEscaperGame extends FlameGame
         unlockedObstacles.add(entry.value.$1);
         milestoneAlert = entry.value.$2;
         milestoneAlertTimer = 3;
-        if (gameMode == GameMode.timeAttack) {
-          final bonus = entry.key >= 5000 ? 100 : (entry.key >= 2500 ? 60 : 30);
-          runCoins += bonus;
-          showBanner = true;
-          bannerTimer = 1.8;
-          bannerText = 'MILESTONE BONUS +$bonus';
-          bannerColor = const Color(0xFFFFD93D);
-        }
       }
     }
   }
@@ -809,11 +777,7 @@ class SpaceEscaperGame extends FlameGame
         currentPhysicsMode = 'normal';
         physicsSurvivedThisRun++;
         final factor = 1 + (distance / 10000).floor() * 0.2;
-        if (gameMode == GameMode.obstaclesOnly) {
-          nextPhysicsChange = 3 + Random().nextDouble() * 3;
-        } else {
-          nextPhysicsChange = (30 + Random().nextDouble() * 30) / factor;
-        }
+        nextPhysicsChange = (30 + Random().nextDouble() * 30) / factor;
       }
     }
 
@@ -853,29 +817,17 @@ class SpaceEscaperGame extends FlameGame
 
   void _activatePhysicsMode() {
     currentPhysicsMode = pendingPhysicsMode ?? 'normal';
-    final durations = gameMode == GameMode.obstaclesOnly
-      ? {
-          'reversed': [4.0, 6.0],
-          'zero': [3.0, 5.0],
-          'double': [3.0, 5.0],
-          'inverted': [4.0, 6.0],
-          'magnetic': [3.0, 5.0],
-          'turbulence': [4.0, 6.0],
-          'hyperdrive': [2.5, 3.5],
-          'timewarp': [2.5, 3.5],
-          'singularity': [2.0, 3.0],
-        }
-      : {
-          'reversed': [15.0, 20.0],
-          'zero': [10.0, 15.0],
-          'double': [12.0, 18.0],
-          'inverted': [10.0, 15.0],
-          'magnetic': [15.0, 20.0],
-          'turbulence': [12.0, 18.0],
-          'hyperdrive': [8.0, 12.0],
-          'timewarp': [8.0, 12.0],
-          'singularity': [10.0, 15.0],
-        };
+    final durations = {
+      'reversed': [15.0, 20.0],
+      'zero': [10.0, 15.0],
+      'double': [12.0, 18.0],
+      'inverted': [10.0, 15.0],
+      'magnetic': [15.0, 20.0],
+      'turbulence': [12.0, 18.0],
+      'hyperdrive': [8.0, 12.0],
+      'timewarp': [8.0, 12.0],
+      'singularity': [10.0, 15.0],
+    };
     final d = durations[currentPhysicsMode] ?? [10.0, 15.0];
     physicsDuration = d[0] + Random().nextDouble() * (d[1] - d[0]);
     physicsTimer = physicsDuration;
@@ -966,21 +918,19 @@ class SpaceEscaperGame extends FlameGame
     int earned = (value * multiplier).ceil();
 
     // Skill tree bonus
-    final coinValueLevel = GameStorage.getSkillLevel('coin_value');
+    final coinValueLevel = GameStorage.getSkillLevel('coin_value', shipId: currentShip.id);
     earned = (earned * (1 + coinValueLevel * 0.05)).ceil();
 
     // Lucky clover consumable
     if (luckyCloverActive) {
       earned = (earned * 1.2).ceil();
     }
-
-    earned = (earned * coinModeMultiplier).ceil();
     runCoins += earned;
     combo++;
     comboTimer = 2.0;
 
     // Skill tree combo duration bonus
-    final comboDurLevel = GameStorage.getSkillLevel('combo_duration');
+    final comboDurLevel = GameStorage.getSkillLevel('combo_duration', shipId: currentShip.id);
     comboTimer += comboDurLevel * 0.3;
 
     if (combo >= 10) multiplier = 1.5;
@@ -996,7 +946,7 @@ class SpaceEscaperGame extends FlameGame
     int reward = 3;
 
     // Skill tree: bounty hunter
-    final bountyLevel = GameStorage.getSkillLevel('alien_reward');
+    final bountyLevel = GameStorage.getSkillLevel('alien_reward', shipId: currentShip.id);
     reward += bountyLevel * 2;
 
     runCoins += reward;
@@ -1012,10 +962,19 @@ class SpaceEscaperGame extends FlameGame
   void playerHit() {
     if (player.invincible) return;
     if (player.phasing) return;
+    
+    // Check for Shield Power-up
+    if (activePowerUps.containsKey(PowerUpType.shield)) {
+      activePowerUps.remove(PowerUpType.shield);
+      player.makeInvincible(); // Brief invincibility after shield pop
+      screenEffects.triggerShake(duration: 0.3, intensity: 5);
+      // Optional: Sound effect
+      return;
+    }
 
     // Skill tree: second wind
     if (!disableSecondWind) {
-      final secondWindLevel = GameStorage.getSkillLevel('bonus_life');
+      final secondWindLevel = GameStorage.getSkillLevel('bonus_life', shipId: currentShip.id);
       if (secondWindLevel > 0) {
         final chance = secondWindLevel * 0.1;
         if (Random().nextDouble() < chance) {

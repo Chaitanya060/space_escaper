@@ -465,7 +465,8 @@ class BossComponent extends PositionComponent
       canvas.drawCircle(center, w * 0.55, shieldPaint);
     }
 
-    // Per-boss health bar removed (global HUD provides boss health)
+    // Health bar rendered directly on the boss
+    _renderHealthBar(canvas, w);
   }
 
   void _renderBossBody(Canvas canvas, double w, double h, Offset center, {double alpha = 1.0}) {

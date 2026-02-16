@@ -68,7 +68,7 @@ const List<BossConfig> allBosses = [
   // ── TIER 1: EARLY (5k-17k) ──
   BossConfig(
     id: 'solar_titan', name: 'Solar Titan', emoji: '☀️', tier: 1,
-    spawnDistance: 5000, maxHealth: 800, width: 120, height: 100, // Nerfed HP 1500->800
+    spawnDistance: 5000, maxHealth: 200, width: 120, height: 100,
     movement: BossMovement.sway,
     color: Color(0xFFFFD700), glowColor: Color(0x80FFD700),
     rewardCoins: 800, rewardPowerUp: 'shield',
@@ -87,7 +87,7 @@ const List<BossConfig> allBosses = [
   ),
   BossConfig(
     id: 'void_devourer', name: 'Void Devourer', emoji: '🌀', tier: 1,
-    spawnDistance: 8000, maxHealth: 1200, width: 140, height: 120, // Nerfed HP 2500->1200
+    spawnDistance: 8000, maxHealth: 350, width: 140, height: 120,
     movement: BossMovement.chase,
     color: Color(0xFF8B5CF6), glowColor: Color(0x808B5CF6),
     rewardCoins: 1200, rewardPowerUp: 'ultraMagnet',
@@ -106,7 +106,7 @@ const List<BossConfig> allBosses = [
   ),
   BossConfig(
     id: 'ai_dreadnought', name: 'AI Dreadnought', emoji: '🤖', tier: 1,
-    spawnDistance: 11000, maxHealth: 1600, width: 130, height: 110, // Nerfed HP 3500->1600
+    spawnDistance: 11000, maxHealth: 550, width: 130, height: 110,
     movement: BossMovement.patrol,
     color: Color(0xFF374151), glowColor: Color(0x8000D9FF),
     rewardCoins: 1800, rewardPowerUp: 'damageBoost',
@@ -125,7 +125,7 @@ const List<BossConfig> allBosses = [
   ),
   BossConfig(
     id: 'thunder_leviathan', name: 'Thunder Leviathan', emoji: '⚡', tier: 1,
-    spawnDistance: 14000, maxHealth: 2000, width: 140, height: 110, // Nerfed HP 4500->2000
+    spawnDistance: 14000, maxHealth: 800, width: 140, height: 110,
     movement: BossMovement.charge,
     color: Color(0xFFFBBF24), glowColor: Color(0x80FBBF24),
     rewardCoins: 2500, rewardPowerUp: 'bulletTime',
@@ -144,7 +144,7 @@ const List<BossConfig> allBosses = [
   ),
   BossConfig(
     id: 'cryo_colossus', name: 'Cryo Colossus', emoji: '🧊', tier: 1,
-    spawnDistance: 17000, maxHealth: 2500, width: 130, height: 120, // Nerfed HP 5500->2500
+    spawnDistance: 17000, maxHealth: 1100, width: 130, height: 120,
     movement: BossMovement.sway,
     color: Color(0xFF06B6D4), glowColor: Color(0x8006B6D4),
     rewardCoins: 3200, rewardPowerUp: 'comboFreeze',

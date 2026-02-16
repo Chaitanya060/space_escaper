@@ -1,4 +1,4 @@
-package com.spaceescaper.space_escaper
+package com.game.spaceescaper
 
 import io.flutter.embedding.android.FlutterActivity
 

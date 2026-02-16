@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/game_storage.dart';
 import '../data/progression_data.dart';
+import '../data/powerup_data.dart';
 import 'game_screen.dart';
 import 'ship_select_screen.dart';
 import 'settings_screen.dart';
@@ -41,13 +42,18 @@ class _MainMenuScreenState extends State<MainMenuScreen>
     )..forward();
     _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
 
+    // DEBUG: Grant consumables for testing
+    GameStorage.debugGrantConsumables();
+
     // Check daily login
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (GameStorage.checkDailyLogin()) {
         showDialog(
           context: context,
           builder: (_) => const DailyRewardScreen(),
-        );
+        ).then((_) {
+          if (mounted) setState(() {});
+        });
       }
     });
   }
@@ -158,16 +164,27 @@ class _MainMenuScreenState extends State<MainMenuScreen>
                       showModalBottomSheet(
                         context: context,
                         backgroundColor: const Color(0xFF0A1929),
+                        isScrollControlled: true, // Allow taller sheet
                         shape: const RoundedRectangleBorder(
                           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                         ),
-                        builder: (_) => _modePicker(),
-                      );
+                        builder: (_) => StatefulBuilder( // Use StatefulBuilder to rebuild the sheet
+                          builder: (context, setSheetState) {
+                            return _buildLaunchSheet(setSheetState);
+                          }
+                        ),
+                      ).then((_) {
+                        // Refresh main menu when returning from sheet (in case consumables changed)
+                        if (mounted) setState(() {});
+                      });
                     }),
                     const SizedBox(height: 12),
                     _holoButton('✦  SPACECRAFT', onTap: () {
                       Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => const ShipSelectScreen()));
+                        MaterialPageRoute(builder: (_) => const ShipSelectScreen())
+                      ).then((_) {
+                        if (mounted) setState(() {});
+                      });
                     }),
                     const SizedBox(height: 12),
 
@@ -177,21 +194,30 @@ class _MainMenuScreenState extends State<MainMenuScreen>
                         Expanded(
                           child: _compactButton(Icons.assignment, 'MISSIONS', onTap: () {
                             Navigator.push(context,
-                              MaterialPageRoute(builder: (_) => const MissionsScreen()));
+                              MaterialPageRoute(builder: (_) => const MissionsScreen())
+                            ).then((_) {
+                              if (mounted) setState(() {});
+                            });
                           }),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: _compactButton(Icons.person, 'PROFILE', onTap: () {
                             Navigator.push(context,
-                              MaterialPageRoute(builder: (_) => const ProfileScreen()));
+                              MaterialPageRoute(builder: (_) => const ProfileScreen())
+                            ).then((_) {
+                              if (mounted) setState(() {});
+                            });
                           }),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: _compactButton(Icons.store, 'SHOP', onTap: () {
                             Navigator.push(context,
-                              MaterialPageRoute(builder: (_) => const ShopScreen()));
+                              MaterialPageRoute(builder: (_) => const ShopScreen())
+                            ).then((_) {
+                              if (mounted) setState(() {});
+                            });
                           }),
                         ),
                       ],
@@ -213,6 +239,128 @@ class _MainMenuScreenState extends State<MainMenuScreen>
     );
   }
 
+  Widget _buildLaunchSheet(StateSetter setSheetState) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      height: MediaQuery.of(context).size.height * 0.75, // Taller for loadout
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('MISSION PREP', style: GoogleFonts.orbitron(
+                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18, letterSpacing: 1)),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white54),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          
+          Text('LOADOUT', style: GoogleFonts.orbitron(
+            color: const Color(0xFF00D9FF), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 2)),
+          const SizedBox(height: 10),
+          
+          // Loadout Selector
+          SizedBox(
+            height: 100,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: allConsumables.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final c = allConsumables[index];
+                final owned = GameStorage.getConsumableCount(c.type.name);
+                final isActive = GameStorage.isConsumableActive(c.type.name);
+                
+                return GestureDetector(
+                  onTap: () {
+                    if (owned > 0 || isActive) {
+                      GameStorage.toggleActiveConsumable(c.type.name);
+                      setSheetState(() {}); // Rebuild sheet to show toggle
+                    } else {
+                       // Quick Buy Dialog logic could go here
+                       ScaffoldMessenger.of(context).showSnackBar(
+                         SnackBar(
+                           content: Text('Buy more ${c.name} in the Shop!'),
+                           backgroundColor: Colors.red,
+                           duration: const Duration(seconds: 1),
+                         )
+                       );
+                    }
+                  },
+                  child: Container(
+                    width: 80,
+                    decoration: BoxDecoration(
+                      color: isActive 
+                          ? c.color.withValues(alpha: 0.2)
+                          : const Color(0xFF0A1929),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isActive ? c.color : Colors.white12,
+                        width: isActive ? 2 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(c.icon, color: owned > 0 || isActive ? c.color : Colors.white24, size: 28),
+                        const SizedBox(height: 6),
+                        Text('x$owned', style: GoogleFonts.orbitron(
+                          color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 2),
+                        Text(c.name.split(' ').first, style: TextStyle( // Short name
+                          color: Colors.white54, fontSize: 9), textAlign: TextAlign.center),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          const Divider(color: Colors.white12),
+          const SizedBox(height: 16),
+
+          Text('SELECT MODE', style: GoogleFonts.orbitron(
+            color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 12)),
+          const SizedBox(height: 12),
+          
+          Expanded(
+            child: ListView(
+              children: [
+                _modeChip('CLASSIC', const Color(0xFF00D9FF), () {
+                  _startGame(GameMode.endless);
+                }, subtitle: 'Endless survival, increasing difficulty'),
+                const SizedBox(height: 10),
+                _modeChip('SURVIVAL HELL', const Color(0xFFEF4444), () {
+                  _startGame(GameMode.survivalHell);
+                }, subtitle: 'One hit death, dense obstacles, stardust rewards'),
+                const SizedBox(height: 10),
+                _modeChip('BOSS RUSH', const Color(0xFFA855F7), () {
+                  _startGame(GameMode.bossRush);
+                }, subtitle: 'Defeat 5 bosses in a row'),
+                const SizedBox(height: 10),
+                _modeChip('GAUNTLET', const Color(0xFFFF6B35), () {
+                  _startGame(GameMode.gauntlet);
+                }, subtitle: '10 escalating challenge waves'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _startGame(GameMode mode) {
+    Navigator.pop(context);
+    Navigator.pushReplacement(context,
+      MaterialPageRoute(builder: (_) => GameScreen(mode: mode)));
+  }
+
   Widget _modeChip(String title, Color color, VoidCallback onTap, {String? subtitle}) {
     return GestureDetector(
       onTap: onTap,
@@ -231,69 +379,6 @@ class _MainMenuScreenState extends State<MainMenuScreen>
               const SizedBox(height: 6),
               Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _modePicker() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('SELECT MODE', style: GoogleFonts.orbitron(
-              color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 3)),
-            const SizedBox(height: 12),
-            _modeChip('CLASSIC', const Color(0xFF00D9FF), () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (_) => const GameScreen()));
-            }, subtitle: 'Endless survival, increasing difficulty'),
-            const SizedBox(height: 10),
-            _modeChip('TIME ATTACK 90s', const Color(0xFFF97316), () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (_) => const GameScreen(mode: GameMode.timeAttack, timeLimitSec: 90)));
-            }, subtitle: 'Reach maximum distance before the clock runs out'),
-            const SizedBox(height: 10),
-            _modeChip('COIN FRENZY', const Color(0xFFFFD93D), () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (_) => const GameScreen(mode: GameMode.coinFrenzy, timeLimitSec: 120)));
-            }, subtitle: '2 minutes of massive coins, minimal danger'),
-            const SizedBox(height: 10),
-            _modeChip('SURVIVAL HELL', const Color(0xFFEF4444), () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (_) => const GameScreen(mode: GameMode.survivalHell)));
-            }, subtitle: 'One hit death, dense obstacles, stardust rewards'),
-            const SizedBox(height: 10),
-            _modeChip('BOSS RUSH', const Color(0xFFA855F7), () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (_) => const GameScreen(mode: GameMode.bossRush)));
-            }, subtitle: 'Defeat 5 bosses in a row'),
-            const SizedBox(height: 10),
-            _modeChip('OBSTACLES ONLY', const Color(0xFF34D399), () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (_) => const GameScreen(mode: GameMode.obstaclesOnly)));
-            }, subtitle: 'No coins. Pure dodging with wild physics'),
-            const SizedBox(height: 10),
-            _modeChip('ZEN', const Color(0xFF10B981), () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (_) => const GameScreen(mode: GameMode.zen)));
-            }, subtitle: 'Relaxing, minimal obstacles, no death'),
-            const SizedBox(height: 10),
-            _modeChip('GAUNTLET', const Color(0xFFFF6B35), () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (_) => const GameScreen(mode: GameMode.gauntlet)));
-            }, subtitle: '10 escalating challenge waves'),
           ],
         ),
       ),
@@ -326,6 +411,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
   }
 
   Widget _holoButton(String label, {bool isPrimary = false, VoidCallback? onTap}) {
+    // ... existing _holoButton implementation ...
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -365,6 +451,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
   }
 
   Widget _compactButton(IconData icon, String label, {VoidCallback? onTap}) {
+    // ... existing _compactButton implementation ...
     return GestureDetector(
       onTap: onTap,
       child: Container(

@@ -145,20 +145,50 @@ class GameStorage {
   // ═══════════════════════════════════════
   //  SKILL TREE
   // ═══════════════════════════════════════
-  static Map<String, int> get skillLevels {
-    final json = _prefs.getString('skillLevels');
-    if (json == null) return {};
-    return Map<String, int>.from(jsonDecode(json));
+  static Map<String, Map<String, int>> get skillLevelsByShip {
+    final json = _prefs.getString('skillLevelsByShip');
+    final legacyJson = _prefs.getString('skillLevels');
+
+    if (json == null) {
+      if (legacyJson == null) return {};
+
+      final legacyLevels = Map<String, int>.from(jsonDecode(legacyJson));
+      final migrated = <String, Map<String, int>>{selectedShip: legacyLevels};
+      _prefs.setString('skillLevelsByShip', jsonEncode(migrated));
+      _prefs.remove('skillLevels');
+      return migrated;
+    }
+
+    final decoded = jsonDecode(json);
+    if (decoded is! Map) return {};
+
+    final result = <String, Map<String, int>>{};
+    for (final entry in decoded.entries) {
+      final shipId = entry.key.toString();
+      final value = entry.value;
+      if (value is Map) {
+        result[shipId] = Map<String, int>.from(value);
+      }
+    }
+    return result;
   }
-  static set skillLevels(Map<String, int> v) =>
-      _prefs.setString('skillLevels', jsonEncode(v));
 
-  static int getSkillLevel(String skillId) => skillLevels[skillId] ?? 0;
+  static set skillLevelsByShip(Map<String, Map<String, int>> v) =>
+      _prefs.setString('skillLevelsByShip', jsonEncode(v));
 
-  static void upgradeSkill(String skillId, int cost) {
-    final levels = skillLevels;
-    levels[skillId] = (levels[skillId] ?? 0) + 1;
-    skillLevels = levels;
+  static int getSkillLevel(String skillId, {String? shipId}) {
+    final sid = shipId ?? selectedShip;
+    final byShip = skillLevelsByShip;
+    return byShip[sid]?[skillId] ?? 0;
+  }
+
+  static void upgradeSkill(String skillId, int cost, {String? shipId}) {
+    final sid = shipId ?? selectedShip;
+    final byShip = skillLevelsByShip;
+    final shipLevels = byShip[sid] ?? <String, int>{};
+    shipLevels[skillId] = (shipLevels[skillId] ?? 0) + 1;
+    byShip[sid] = shipLevels;
+    skillLevelsByShip = byShip;
     stardust = stardust - cost;
   }
 
@@ -181,12 +211,60 @@ class GameStorage {
     ownedConsumables = c;
   }
 
+  static void debugGrantConsumables() {
+    final c = ownedConsumables;
+    if ((c['headStart'] ?? 0) < 5) c['headStart'] = 10;
+    if ((c['luckyClover'] ?? 0) < 5) c['luckyClover'] = 10;
+    if ((c['shieldCharge'] ?? 0) < 5) c['shieldCharge'] = 10;
+    if ((c['shieldDuration'] ?? 0) < 5) c['shieldDuration'] = 10;
+    ownedConsumables = c;
+  }
+
   static bool useConsumable(String type) {
     final c = ownedConsumables;
     if ((c[type] ?? 0) <= 0) return false;
     c[type] = c[type]! - 1;
     ownedConsumables = c;
     return true;
+  }
+
+  // Active consumables for the NEXT run
+  static Set<String> get activeConsumables {
+    final list = _prefs.getStringList('activeConsumables');
+    return list?.toSet() ?? {};
+  }
+  static set activeConsumables(Set<String> v) =>
+      _prefs.setStringList('activeConsumables', v.toList());
+
+  static bool isConsumableActive(String type) => activeConsumables.contains(type);
+
+  static void toggleActiveConsumable(String type) {
+    final active = activeConsumables;
+    if (active.contains(type)) {
+      active.remove(type);
+    } else {
+      // Check if owned
+      if (getConsumableCount(type) > 0) {
+        active.add(type);
+      }
+    }
+    activeConsumables = active;
+  }
+
+  /// Called when game starts. Returns list of consumables to apply, and decrements inventory.
+  static List<String> consumeActiveItems() {
+    final active = activeConsumables;
+    final List<String> applied = [];
+    
+    for (var type in active) {
+      if (useConsumable(type)) {
+        applied.add(type);
+      }
+    }
+    
+    // Clear active list after consumption
+    activeConsumables = {};
+    return applied;
   }
 
   // ═══════════════════════════════════════
@@ -241,43 +319,56 @@ class GameStorage {
       _prefs.setString('achievements', v);
 
   static void initMissions() {
-    // 1. Daily Missions
-    final today = DateTime.now().toIso8601String().substring(0, 10);
-    if (dailyMissionsDate != today) {
-      final newMissions = pickRandom(dailyMissionPool, 3)
+    // 1. Daily Missions (Seeded by Date)
+    final now = DateTime.now();
+    final todayStr = now.toIso8601String().substring(0, 10);
+    final dailySeed = int.parse('${now.year}${now.month.toString().padLeft(2,'0')}${now.day.toString().padLeft(2,'0')}');
+
+    if (dailyMissionsDate != todayStr) {
+      // Pick 3 new missions deterministically for this day
+      final newMissions = pickRandomSeeded(dailyMissionPool, 3, dailySeed)
           .map((t) => Mission.fromTemplate(t)).toList();
       dailyMissionsJson = jsonEncode(newMissions);
-      dailyMissionsDate = today;
+      dailyMissionsDate = todayStr;
     }
 
-    // 2. Weekly Missions
-    // Simple week calculation (days since epoch / 7)
-    final currentWeek = (DateTime.now().millisecondsSinceEpoch / (1000 * 60 * 60 * 24 * 7)).floor();
+    // 2. Weekly Missions (Seeded by Week Number)
+    // Simple week calculation: Days since epoch / 7
+    final currentWeek = (now.millisecondsSinceEpoch / (1000 * 60 * 60 * 24 * 7)).floor();
+    
     if (weeklyMissionsWeek != currentWeek) {
-      final newMissions = pickRandom(weeklyMissionPool, 5)
+      // Seed for weekly can be the week number itself
+      final newMissions = pickRandomSeeded(weeklyMissionPool, 5, currentWeek)
           .map((t) => Mission.fromTemplate(t)).toList();
       weeklyMissionsJson = jsonEncode(newMissions);
       weeklyMissionsWeek = currentWeek;
     }
 
-    // 3. Achievements (Initialize if empty)
+    // 3. Achievements (Initialize or Update)
     if (achievementsJson == '[]') {
       final achievements = achievementMissions
           .map((t) => Mission.fromTemplate(t)).toList();
       achievementsJson = jsonEncode(achievements);
     } else {
-      // Check if new achievements were added to the game data that aren't in storage
+      // Sync with expanded achievement list without losing progress
       final List<dynamic> storedJson = jsonDecode(achievementsJson);
       final storedIds = storedJson.map((e) => e['id']).toSet();
       
-      bool addedNew = false;
-      List<Mission> currentAchievements = storedJson.map((e) {
-          // Re-hydrate with template data
-          final t = achievementMissions.firstWhere((t) => t.id == e['id'], 
-              orElse: () => achievementMissions[0]); // Fallback if removed
-          return Mission.fromTemplate(t, progress: e['progress'], claimed: e['claimed']);
-      }).toList();
+      List<Mission> currentAchievements = [];
+      
+      // Keep existing progress
+      for (var json in storedJson) {
+        final id = json['id'];
+        final t = achievementMissions.firstWhere((t) => t.id == id, 
+            orElse: () => MissionTemplate(id: 'unknown', title: '?', description: '', type: MissionType.achievement, category: MissionCategory.distance, target: 1));
+        
+        if (t.id != 'unknown') {
+          currentAchievements.add(Mission.fromTemplate(t, progress: json['progress'], claimed: json['claimed']));
+        }
+      }
 
+      // Add new achievements
+      bool addedNew = false;
       for (var t in achievementMissions) {
         if (!storedIds.contains(t.id)) {
           currentAchievements.add(Mission.fromTemplate(t));
@@ -285,7 +376,7 @@ class GameStorage {
         }
       }
       
-      if (addedNew) {
+      if (addedNew || currentAchievements.length != storedJson.length) {
         achievementsJson = jsonEncode(currentAchievements);
       }
     }
