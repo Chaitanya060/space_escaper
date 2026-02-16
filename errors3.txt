@@ -1,0 +1,7 @@
+Analyzing space_escaper...
+
+warning - lib\game\components\alien_component.dart:8:8 - Unused import: 'bullet_component.dart'. Try removing the import directive. - unused_import
+   info - lib\game\components\bullet_component.dart:1:8 - The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart'. Try removing the import directive. - unnecessary_import
+   info - lib\game\components\obstacle_spawner.dart:2:8 - The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart'. Try removing the import directive. - unnecessary_import
+
+3 issues found.

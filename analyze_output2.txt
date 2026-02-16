@@ -1,0 +1,26 @@
+﻿Analyzing space_escaper...                                      
+
+   info - Statements in a for should be enclosed in a block - lib\game\components\starfield_background.dart:187:34 - curly_braces_in_flow_control_structures
+   info - Statements in a for should be enclosed in a block - lib\game\components\starfield_background.dart:188:34 - curly_braces_in_flow_control_structures
+   info - Statements in a for should be enclosed in a block - lib\game\components\starfield_background.dart:189:34 - curly_braces_in_flow_control_structures
+   info - Statements in a for should be enclosed in a block - lib\game\components\starfield_background.dart:190:33 - curly_braces_in_flow_control_structures
+   info - Statements in a for should be enclosed in a block - lib\game\components\starfield_background.dart:208:33 - curly_braces_in_flow_control_structures
+   info - Statements in a for should be enclosed in a block - lib\game\components\starfield_background.dart:209:32 - curly_braces_in_flow_control_structures
+warning - The declaration '_formatDist' isn't referenced - lib\screens\game_screen.dart:553:10 - unused_element
+
+flutter : 7 issues 
+found. (ran in 9.7s)
+At line:1 char:1
++ flutter analyze 2>&1 | 
+Out-File -FilePath C:\Use
+rs\chait\OneDrive\Des ...
++ ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo       
+       : NotSpecified:   
+  (7 issues found. (ra   
+ n in 9.7s):String) [    
+], RemoteException
+    + FullyQualifiedErro 
+   rId : NativeCommandE  
+  rror
+ 

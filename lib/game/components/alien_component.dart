@@ -1,0 +1,252 @@
+import 'dart:math';
+import 'package:flame/components.dart';
+import 'package:flame/collisions.dart';
+import 'package:flutter/material.dart';
+import '../space_escaper_game.dart';
+import 'player_component.dart';
+
+class AlienComponent extends PositionComponent
+    with HasGameReference<SpaceEscaperGame>, CollisionCallbacks {
+  final String alienType; // 'chaser', 'weaver', 'dasher', 'shielder', 'bomber', 'splitter'
+  double speedY = 0;
+  double speedX = 0;
+  double time = 0;
+  double health = 1.0;
+  double bomberTimer = 0;
+
+  AlienComponent({
+    required Vector2 position,
+    this.alienType = 'chaser',
+  }) : super(
+          position: position,
+          size: Vector2(40, 40),
+          anchor: Anchor.center,
+        );
+
+  @override
+  Future<void> onLoad() async {
+    add(RectangleHitbox(size: Vector2(30, 30), position: Vector2(5, 5)));
+
+    speedY = game.currentSpeed + 100;
+
+    switch (alienType) {
+      case 'weaver':
+        speedX = 150;
+        break;
+      case 'dasher':
+        speedY += 200;
+        break;
+      case 'shielder':
+        health = 3.0;
+        speedY = game.currentSpeed * 0.6;
+        break;
+      case 'bomber':
+        speedY = game.currentSpeed * 0.7;
+        break;
+      case 'splitter':
+        health = 2.0;
+        break;
+    }
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    time += dt;
+
+    switch (alienType) {
+      case 'chaser':
+        final playerX = game.player.position.x;
+        if (position.x < playerX - 10) {
+          position.x += 100 * dt;
+        } else if (position.x > playerX + 10) {
+          position.x -= 100 * dt;
+        }
+        position.y += speedY * dt;
+        break;
+      case 'weaver':
+        position.x += cos(time * 3) * speedX * dt;
+        position.y += speedY * dt;
+        break;
+      case 'dasher':
+        final burst = (sin(time * 5) > 0.8) ? 2.0 : 1.0;
+        position.y += speedY * burst * dt;
+        break;
+      case 'shielder':
+        position.y += speedY * dt;
+        // Shield pulsing visual only
+        break;
+      case 'bomber':
+        position.y += speedY * dt;
+        bomberTimer += dt;
+        if (bomberTimer >= 1.5) {
+          bomberTimer = 0;
+          _dropBomb();
+        }
+        break;
+      case 'splitter':
+        position.y += speedY * dt;
+        final playerX2 = game.player.position.x;
+        if (position.x < playerX2 - 20) {
+          position.x += 60 * dt;
+        } else if (position.x > playerX2 + 20) {
+          position.x -= 60 * dt;
+        }
+        break;
+    }
+
+    // Screen wrap for weaver
+    if (position.x < 0) position.x = game.size.x;
+    if (position.x > game.size.x) position.x = 0;
+
+    if (position.y > game.size.y + 50) {
+      removeFromParent();
+    }
+  }
+
+  void _dropBomb() {
+    game.add(_AlienBomb(position: position.clone()));
+  }
+
+  @override
+  void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
+    super.onCollisionStart(intersectionPoints, other);
+    if (other is PlayerComponent) {
+      if (other.hit()) {
+        game.playerHit();
+      }
+    }
+  }
+
+  void takeDamage(double amount) {
+    health -= amount;
+    if (health <= 0) {
+      // Splitter: spawn 2 mini aliens
+      if (alienType == 'splitter') {
+        game.add(AlienComponent(
+          position: position.clone() + Vector2(-15, 0),
+          alienType: 'chaser',
+        ));
+        game.add(AlienComponent(
+          position: position.clone() + Vector2(15, 0),
+          alienType: 'chaser',
+        ));
+      }
+      removeFromParent();
+      game.onAlienKilled();
+    }
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final w = size.x;
+    final h = size.y;
+
+    Paint bodyPaint;
+    Paint glassPaint = Paint()..color = const Color(0xFF00D9FF).withValues(alpha: 0.8);
+
+    switch (alienType) {
+      case 'chaser':
+        bodyPaint = Paint()..color = const Color(0xFFEF4444);
+        break;
+      case 'dasher':
+        bodyPaint = Paint()..color = const Color(0xFFFFD93D);
+        break;
+      case 'weaver':
+        bodyPaint = Paint()..color = const Color(0xFF555555);
+        break;
+      case 'shielder':
+        bodyPaint = Paint()..color = const Color(0xFF3B82F6);
+        break;
+      case 'bomber':
+        bodyPaint = Paint()..color = const Color(0xFFFF6B35);
+        break;
+      case 'splitter':
+        bodyPaint = Paint()..color = const Color(0xFF22C55E);
+        break;
+      default:
+        bodyPaint = Paint()..color = const Color(0xFFEF4444);
+    }
+
+    // Dome
+    canvas.drawArc(
+      Rect.fromLTWH(w * 0.25, 0, w * 0.5, h * 0.6),
+      pi, pi, true, glassPaint,
+    );
+
+    // Saucer Body
+    canvas.drawOval(
+      Rect.fromLTWH(0, h * 0.3, w, h * 0.4),
+      bodyPaint,
+    );
+
+    // Engine/Lights
+    final t = (time * 10).floor();
+    final lightColor = (t % 2 == 0) ? Colors.white : Colors.red;
+    canvas.drawCircle(Offset(w / 2, h * 0.6), 4, Paint()..color = lightColor);
+
+    // Shielder: draw shield ring
+    if (alienType == 'shielder') {
+      final shieldPaint = Paint()
+        ..color = const Color(0xFF3B82F6).withValues(alpha: 0.3 + sin(time * 3) * 0.2)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      canvas.drawCircle(Offset(w / 2, h / 2), w * 0.6, shieldPaint);
+    }
+
+    // Health pips for multi-health aliens
+    if (health > 1) {
+      for (int i = 0; i < health; i++) {
+        canvas.drawCircle(
+          Offset(w / 2 - (health - 1) * 4 + i * 8, h + 5),
+          3,
+          Paint()..color = const Color(0xFF22C55E),
+        );
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════
+//  ALIEN BOMB (from Bomber type)
+// ═══════════════════════════════════════
+
+class _AlienBomb extends PositionComponent
+    with HasGameReference<SpaceEscaperGame>, CollisionCallbacks {
+
+  _AlienBomb({required Vector2 position})
+      : super(position: position, size: Vector2(8, 8), anchor: Anchor.center);
+
+  @override
+  Future<void> onLoad() async {
+    add(CircleHitbox(radius: 4));
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    position.y += 250 * dt;
+    if (position.y > game.size.y + 30) removeFromParent();
+  }
+
+  @override
+  void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
+    super.onCollisionStart(intersectionPoints, other);
+    if (other is PlayerComponent) {
+      if (other.hit()) {
+        game.playerHit();
+      }
+      removeFromParent();
+    }
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final paint = Paint()
+      ..color = const Color(0xFFFF6B35)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    canvas.drawCircle(Offset(size.x / 2, size.y / 2), 4, paint);
+    canvas.drawCircle(Offset(size.x / 2, size.y / 2), 2,
+        Paint()..color = const Color(0xFFFFD93D));
+  }
+}
