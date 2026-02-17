@@ -173,30 +173,41 @@ class BossComponent extends PositionComponent
     }
   }
 
+  // ── ATTACK IMPLEMENTATIONS ──
+
   void _executeNextAttack() {
     final attacks = currentPhase.attacks;
     if (attacks.isEmpty) return;
     final attack = attacks[attackIndex % attacks.length];
     attackIndex++;
 
-    switch (attack.type) {
+    // Apply scaling
+    final scaledAttack = BossAttack(
+      name: attack.name,
+      type: attack.type,
+      projectileCount: attack.projectileCount,
+      speed: attack.speed * currentPhase.projectileSpeedMult,
+      cooldown: attack.cooldown,
+    );
+
+    switch (scaledAttack.type) {
       case BossAttackType.radialBurst:
-        _doRadialBurst(attack);
+        _doRadialBurst(scaledAttack);
         break;
       case BossAttackType.targetedShot:
-        _doTargetedShot(attack);
+        _doTargetedShot(scaledAttack);
         break;
       case BossAttackType.homingMissiles:
-        _doHomingMissiles(attack);
+        _doHomingMissiles(scaledAttack);
         break;
       case BossAttackType.laserSweep:
-        _doLaserSweep(attack);
+        _doLaserSweep(scaledAttack);
         break;
       case BossAttackType.aoeBlast:
-        _doAoeBlast(attack);
+        _doAoeBlast(scaledAttack);
         break;
       case BossAttackType.spawnMinions:
-        _doSpawnMinions(attack);
+        _doSpawnMinions(scaledAttack);
         break;
       case BossAttackType.chargeRush:
         _doChargeRush();
@@ -209,30 +220,28 @@ class BossComponent extends PositionComponent
         _doDebuff();
         break;
       case BossAttackType.summonHazards:
-        _doSummonHazards(attack);
+        _doSummonHazards(scaledAttack);
         break;
       case BossAttackType.regenerate:
         regenTimer = 3.0;
         break;
       case BossAttackType.splitClone:
-        _doSplitClone(attack);
+        _doSplitClone(scaledAttack);
         break;
       case BossAttackType.screenWipe:
-        _doScreenWipe(attack);
+        _doScreenWipe(scaledAttack);
         break;
       case BossAttackType.vortexPull:
         _doVortexPull();
         break;
       case BossAttackType.groundPound:
-        _doGroundPound(attack);
+        _doGroundPound(scaledAttack);
         break;
       case BossAttackType.rapidFire:
-        _doRapidFire(attack);
+        _doRapidFire(scaledAttack);
         break;
     }
   }
-
-  // ── ATTACK IMPLEMENTATIONS ──
 
   void _doRadialBurst(BossAttack attack) {
     for (int i = 0; i < attack.projectileCount; i++) {
@@ -462,6 +471,7 @@ class BossComponent extends PositionComponent
         ..color = Colors.cyanAccent.withOpacity(0.3 + sin(time * 6) * 0.15)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3;
+      // Draw shield shape matches boss shape roughly, or just circle for simplicity
       canvas.drawCircle(center, w * 0.55, shieldPaint);
     }
 
@@ -474,29 +484,33 @@ class BossComponent extends PositionComponent
     final glowPaint = Paint()
       ..color = config.glowColor.withOpacity(0.3 * alpha)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
-    canvas.drawCircle(center, w * 0.45, glowPaint);
+    
+    _drawShape(canvas, center, w * 0.45, config.shape, glowPaint);
 
-    // Core body
+    // Core body with gradient
     final bodyPaint = Paint()
       ..shader = RadialGradient(colors: [
         config.color.withOpacity(0.9 * alpha),
         config.glowColor.withOpacity(0.6 * alpha),
         Colors.transparent,
       ]).createShader(Rect.fromCircle(center: center, radius: w * 0.4));
-    canvas.drawCircle(center, w * 0.38, bodyPaint);
+    
+    _drawShape(canvas, center, w * 0.38, config.shape, bodyPaint);
 
     // Inner bright core
     final corePaint = Paint()
       ..color = Colors.white.withOpacity(0.7 * alpha)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-    canvas.drawCircle(center, w * 0.12, corePaint);
+    
+    _drawShape(canvas, center, w * 0.12, config.shape, corePaint);
 
-    // Rotating particles
+    // Rotating particles or details based on shape
     final particlePaint = Paint()..color = config.color.withOpacity(0.6 * alpha);
     for (int i = 0; i < 6; i++) {
       final angle = time * 1.5 + i * (pi / 3);
-      final dx = center.dx + cos(angle) * w * 0.3;
-      final dy = center.dy + sin(angle) * w * 0.3;
+      final radius = w * 0.3 + sin(time * 2 + i) * 5;
+      final dx = center.dx + cos(angle) * radius;
+      final dy = center.dy + sin(angle) * radius;
       canvas.drawCircle(Offset(dx, dy), 3, particlePaint);
     }
 
@@ -520,14 +534,114 @@ class BossComponent extends PositionComponent
         ..color = const Color(0xFFFFD700).withOpacity(0.2 * alpha + sin(time * 3) * 0.1)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2;
-      canvas.drawCircle(center, w * 0.48, ringPaint);
+      _drawShape(canvas, center, w * 0.48, config.shape, ringPaint);
     }
-    if (config.tier >= 5) {
-      final ring2 = Paint()
-        ..color = Colors.white.withOpacity(0.15 * alpha + sin(time * 5) * 0.1)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1;
-      canvas.drawCircle(center, w * 0.52, ring2);
+  }
+
+  void _drawShape(Canvas canvas, Offset center, double radius, BossShape shape, Paint paint) {
+    switch (shape) {
+      case BossShape.circle:
+        canvas.drawCircle(center, radius, paint);
+        break;
+      case BossShape.crystal:
+        // Hexagon
+        final path = Path();
+        for (int i = 0; i < 6; i++) {
+          final angle = (i * 60) * pi / 180;
+          final x = center.dx + cos(angle) * radius;
+          final y = center.dy + sin(angle) * radius;
+          if (i == 0) path.moveTo(x, y);
+          else path.lineTo(x, y);
+        }
+        path.close();
+        canvas.drawPath(path, paint);
+        break;
+      case BossShape.sharp:
+        // Star-like spikes (8 points)
+        final path = Path();
+        final innerRadius = radius * 0.5;
+        for (int i = 0; i < 16; i++) {
+          final angle = (i * 22.5) * pi / 180;
+          final r = (i.isEven) ? radius : innerRadius;
+          final x = center.dx + cos(angle) * r;
+          final y = center.dy + sin(angle) * r;
+          if (i == 0) path.moveTo(x, y);
+          else path.lineTo(x, y);
+        }
+        path.close();
+        canvas.drawPath(path, paint);
+        break;
+      case BossShape.tech:
+        // Square with cut corners
+        final path = Path();
+        final r = radius;
+        final c = r * 0.3; // corner cut
+        path.moveTo(center.dx - r + c, center.dy - r);
+        path.lineTo(center.dx + r - c, center.dy - r);
+        path.lineTo(center.dx + r, center.dy - r + c);
+        path.lineTo(center.dx + r, center.dy + r - c);
+        path.lineTo(center.dx + r - c, center.dy + r);
+        path.lineTo(center.dx - r + c, center.dy + r);
+        path.lineTo(center.dx - r, center.dy + r - c);
+        path.lineTo(center.dx - r, center.dy - r + c);
+        path.close();
+        canvas.drawPath(path, paint);
+        break;
+      case BossShape.organic:
+        // Blobs (simulated by drawing 3 overlapping circles)
+        canvas.drawCircle(center, radius * 0.8, paint);
+        canvas.drawCircle(Offset(center.dx - radius * 0.3, center.dy - radius * 0.3), radius * 0.6, paint);
+        canvas.drawCircle(Offset(center.dx + radius * 0.3, center.dy + radius * 0.3), radius * 0.6, paint);
+        break;
+      case BossShape.skull:
+        // Simplified skull shape
+        final path = Path();
+        path.addOval(Rect.fromCircle(center: Offset(center.dx, center.dy - radius * 0.2), radius: radius * 0.7));
+        path.addRect(Rect.fromLTWH(center.dx - radius * 0.4, center.dy + radius * 0.2, radius * 0.8, radius * 0.6));
+        canvas.drawPath(path, paint);
+        break;
+      case BossShape.star:
+        // 5-point star
+        final path = Path();
+        final innerRadius = radius * 0.4;
+        for (int i = 0; i < 10; i++) {
+          final angle = (i * 36 - 18) * pi / 180;
+          final r = (i.isEven) ? radius : innerRadius;
+          final x = center.dx + cos(angle) * r;
+          final y = center.dy + sin(angle) * r;
+          if (i == 0) path.moveTo(x, y);
+          else path.lineTo(x, y);
+        }
+        path.close();
+        canvas.drawPath(path, paint);
+        break;
+      case BossShape.eye:
+        // Eye shape
+        final path = Path();
+        path.moveTo(center.dx - radius, center.dy);
+        path.quadraticBezierTo(center.dx, center.dy - radius * 0.8, center.dx + radius, center.dy);
+        path.quadraticBezierTo(center.dx, center.dy + radius * 0.8, center.dx - radius, center.dy);
+        path.close();
+        canvas.drawPath(path, paint);
+        // Draw pupil if this is a fill paint
+        if (paint.style == PaintingStyle.fill) {
+           canvas.drawCircle(center, radius * 0.3, paint..color = Colors.black);
+        }
+        break;
+      case BossShape.amorphous:
+         // Wobbly circle
+         final path = Path();
+         for (int i = 0; i <= 360; i += 10) {
+           final angle = i * pi / 180;
+           final wobble = radius + sin(i * 0.1 + time * 5) * 10;
+           final x = center.dx + cos(angle) * wobble;
+           final y = center.dy + sin(angle) * wobble;
+           if (i == 0) path.moveTo(x, y);
+           else path.lineTo(x, y);
+         }
+         path.close();
+         canvas.drawPath(path, paint);
+         break;
     }
   }
 

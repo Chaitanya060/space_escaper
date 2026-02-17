@@ -61,7 +61,7 @@ class ObstacleComponent extends PositionComponent
         final dx = position.x - player.position.x;
         final dy = position.y - player.position.y;
         final distSq = dx * dx + dy * dy;
-        if (distSq > 0) {
+        if (distSq > 4 && !hasCollided) { // Prevent division by zero or extreme forces
           final dist = sqrt(distSq);
           final radius = 180 + min(game.distance / 60, 90);
           if (dist < radius) {

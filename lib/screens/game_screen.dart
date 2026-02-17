@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../data/game_storage.dart';
 import '../data/powerup_data.dart';
 import '../data/progression_data.dart';
+import '../data/ship_data.dart';
 import '../game/space_escaper_game.dart';
 import 'main_menu_screen.dart';
 
@@ -81,7 +82,7 @@ class _GameScreenState extends State<GameScreen> {
       GameStorage.spendCoins(300);
       setState(() {
         _showGameOver = false;
-        _continueUsed = true;
+        // _continueUsed = true; // Allow multiple continues
       });
       _game.gameState = GameState.playing;
       _game.player.alive = true;
@@ -104,6 +105,8 @@ class _GameScreenState extends State<GameScreen> {
             _buildConsumableBar(),
             _buildControls(),
             _buildPauseButton(),
+            if (_game.isLoaded && _game.currentShip.activeType != ActiveAbilityType.none)
+              _buildActiveAbilityButton(),
           ],
 
           // Pause overlay
@@ -362,6 +365,73 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
+  Widget _buildActiveAbilityButton() {
+    return Positioned(
+      bottom: 40,
+      right: 20,
+      child: GestureDetector(
+        onTap: () {
+          if (_game.activeAbilityCooldownTimer <= 0) {
+            _game.triggerActiveAbility();
+          }
+        },
+        child: SizedBox(
+          width: 64,
+          height: 64,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Cooldown ring
+              SizedBox(
+                width: 64,
+                height: 64,
+                child: CircularProgressIndicator(
+                  value: _game.activeAbilityCooldownTimer > 0
+                      ? 1.0 - (_game.activeAbilityCooldownTimer / _game.currentShip.activeCooldown)
+                      : 1.0,
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    _game.activeAbilityCooldownTimer <= 0
+                        ? _game.currentShip.color
+                        : Colors.grey,
+                  ),
+                  backgroundColor: Colors.white.withValues(alpha: 0.1),
+                ),
+              ),
+              // Button background
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _game.activeAbilityCooldownTimer <= 0
+                      ? _game.currentShip.color.withValues(alpha: 0.4)
+                      : Colors.grey.withValues(alpha: 0.2),
+                  border: Border.all(
+                    color: _game.activeAbilityCooldownTimer <= 0
+                        ? _game.currentShip.color.withValues(alpha: 0.8)
+                        : Colors.grey.withValues(alpha: 0.4),
+                    width: 2,
+                  ),
+                  boxShadow: _game.activeAbilityCooldownTimer <= 0
+                      ? [BoxShadow(color: _game.currentShip.color.withValues(alpha: 0.4), blurRadius: 12)]
+                      : [],
+                ),
+                child: Icon(
+                  Icons.auto_awesome,
+                  color: _game.activeAbilityCooldownTimer <= 0
+                      ? Colors.white
+                      : Colors.grey,
+                  size: 24,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildConsumableBar() {
     return Positioned(
       left: 8,
@@ -418,13 +488,16 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _useConsumableInGame(ConsumableInfo c) {
+    if (c.type == ConsumableType.shieldCharge && _game.activePowerUps.containsKey(PowerUpType.shield)) {
+      return;
+    }
     if (!GameStorage.useConsumable(c.type.name)) return;
 
     setState(() {});
 
     switch (c.type) {
       case ConsumableType.headStart:
-        _game.distance += 500;
+        _game.distance += 2000;
         _game.currentSpeed = _game.baseSpeed * 1.5;
         _game.player.makeInvincible();
         _game.activePowerUps[PowerUpType.invincibility] = 5.0;
@@ -433,11 +506,10 @@ class _GameScreenState extends State<GameScreen> {
         _game.luckyCloverActive = true;
         break;
       case ConsumableType.shieldCharge:
-        _game.activePowerUps[PowerUpType.shield] = 99999;
-        _game.player.makeInvincible();
+        _game.activePowerUps[PowerUpType.shield] = 20.0;
         break;
-      case ConsumableType.shieldDuration:
-        _game.shieldDurationMultiplier = 1.5;
+      case ConsumableType.xpBooster:
+        _game.xpBoosterActive = true;
         break;
     }
 
@@ -581,13 +653,12 @@ class _GameScreenState extends State<GameScreen> {
                   ),
 
                   const SizedBox(height: 16),
-                  if (!_continueUsed)
-                    _overlayButton(
-                      'CONTINUE (300 ✦)',
-                      onTap: GameStorage.canAfford(300) ? _continueGame : null,
-                      isDisabled: !GameStorage.canAfford(300),
-                    ),
-                  if (!_continueUsed) const SizedBox(height: 10),
+                  _overlayButton(
+                    'CONTINUE (300 ✦)',
+                    onTap: GameStorage.canAfford(300) ? _continueGame : null,
+                    isDisabled: !GameStorage.canAfford(300),
+                  ),
+                  const SizedBox(height: 10),
                   _overlayButton('↻  RESTART', isPrimary: true, onTap: _restart),
                   const SizedBox(height: 10),
                   _overlayButton('◂  MAIN MENU', onTap: _goToMenu),

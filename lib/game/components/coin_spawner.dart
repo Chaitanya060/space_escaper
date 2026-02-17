@@ -70,6 +70,7 @@ class CoinComponent extends PositionComponent
     if (other is PlayerComponent && !collected) {
       collected = true;
       game.collectCoin(value);
+      game.triggerPickupEffect(position, value >= 5 ? const Color(0xFFA855F7) : const Color(0xFFFFD93D));
       removeFromParent();
     }
   }
@@ -232,6 +233,7 @@ class StardustComponent extends PositionComponent
     if (other is PlayerComponent && !collected) {
       collected = true;
       GameStorage.addStardust(amount);
+      game.triggerPickupEffect(position, const Color(0xFF8B5CF6));
       removeFromParent();
     }
   }

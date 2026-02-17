@@ -18,12 +18,31 @@ class ScreenEffects extends Component with HasGameReference<SpaceEscaperGame> {
   // Combo glow pulse
   double comboGlowTimer = 0;
 
-  // Speed lines (hyperdrive)
+  // Damage flash
+  double flashTimer = 0;
+  Color flashColor = Colors.white;
+
+  // Mode Pulse
+  double pulseTimer = 0;
+  Color pulseColor = Colors.white;
+
+  // Static noise (Dark Matter)
+  final Random _rng = Random();
   final List<_SpeedLine> _speedLines = [];
 
   void triggerShake({double duration = 0.5, double intensity = 8}) {
     shakeTimer = duration;
     shakeIntensity = intensity;
+  }
+
+  void triggerFlash({Color color = Colors.white, double duration = 0.2}) {
+    flashTimer = duration;
+    flashColor = color;
+  }
+
+  void triggerModePulse(Color color) {
+    pulseTimer = 1.0;
+    pulseColor = color;
   }
 
   void triggerComboGlow() {
@@ -32,10 +51,9 @@ class ScreenEffects extends Component with HasGameReference<SpaceEscaperGame> {
 
   Vector2 getShakeOffset() {
     if (shakeTimer <= 0) return Vector2.zero();
-    final rng = Random();
     return Vector2(
-      (rng.nextDouble() - 0.5) * shakeIntensity * 2,
-      (rng.nextDouble() - 0.5) * shakeIntensity * 2,
+      (_rng.nextDouble() - 0.5) * shakeIntensity * 2,
+      (_rng.nextDouble() - 0.5) * shakeIntensity * 2,
     );
   }
 
@@ -48,6 +66,12 @@ class ScreenEffects extends Component with HasGameReference<SpaceEscaperGame> {
       shakeTimer -= dt;
       shakeIntensity *= 0.95;
     }
+
+    // Flash decay
+    if (flashTimer > 0) flashTimer -= dt;
+
+    // Pulse decay
+    if (pulseTimer > 0) pulseTimer -= dt;
 
     // Combo glow
     if (comboGlowTimer > 0) {
@@ -70,18 +94,43 @@ class ScreenEffects extends Component with HasGameReference<SpaceEscaperGame> {
     if (game.currentPhysicsMode == 'hyperdrive') {
       if (_speedLines.length < 20) {
         _speedLines.add(_SpeedLine(
-          x: Random().nextDouble() * game.size.x,
-          y: Random().nextDouble() * game.size.y,
-          length: 20 + Random().nextDouble() * 40,
-          speed: 500 + Random().nextDouble() * 300,
+          x: _rng.nextDouble() * game.size.x,
+          y: _rng.nextDouble() * game.size.y,
+          length: 20 + _rng.nextDouble() * 40,
+          speed: 500 + _rng.nextDouble() * 300,
+          color: Colors.cyanAccent,
+        ));
+      }
+    } else if (game.currentPhysicsMode == 'singularity') {
+      // Warp lines
+       if (_speedLines.length < 10) {
+        _speedLines.add(_SpeedLine(
+          x: _rng.nextDouble() * game.size.x,
+          y: _rng.nextDouble() * game.size.y,
+          length: 5,
+          speed: 100,
+          color: Colors.purpleAccent,
         ));
       }
     }
 
     // Update speed lines
     _speedLines.removeWhere((l) {
-      l.y += l.speed * dt;
-      return l.y > game.size.y + 50;
+      if (game.currentPhysicsMode == 'singularity') {
+         // swirl
+         final cx = game.size.x / 2;
+         final cy = game.size.y / 2;
+         final dx = l.x - cx;
+         final dy = l.y - cy;
+         final angle = atan2(dy, dx) + 2 * dt;
+         final dist = sqrt(dx*dx + dy*dy) - 50 * dt;
+         l.x = cx + cos(angle) * dist;
+         l.y = cy + sin(angle) * dist;
+         return dist < 10;
+      } else {
+        l.y += l.speed * dt;
+        return l.y > game.size.y + 50;
+      }
     });
   }
 
@@ -89,6 +138,27 @@ class ScreenEffects extends Component with HasGameReference<SpaceEscaperGame> {
   void render(Canvas canvas) {
     final w = game.size.x;
     final h = game.size.y;
+
+    // Dark Matter Static
+    if (game.currentPhysicsMode == 'dark_matter') {
+       final staticPaint = Paint()..color = Colors.white.withValues(alpha: 0.1);
+       for(int i=0; i<100; i++) {
+         canvas.drawCircle(Offset(_rng.nextDouble() * w, _rng.nextDouble() * h), 1, staticPaint);
+       }
+    }
+
+    // Distortion Ripples (Singularity)
+    if (game.currentPhysicsMode == 'singularity') {
+       final ripplePaint = Paint()
+         ..color = Colors.purple.withValues(alpha: 0.1)
+         ..style = PaintingStyle.stroke
+         ..strokeWidth = 2;
+       final center = Offset(w/2, h/2);
+       for(int i=0; i<5; i++) {
+          final r = (game.currentTime() * 100 + i * 50) % (w/2);
+          canvas.drawCircle(center, r, ripplePaint);
+       }
+    }
 
     // Red vignette
     if (vignetteIntensity > 0.01) {
@@ -104,6 +174,24 @@ class ScreenEffects extends Component with HasGameReference<SpaceEscaperGame> {
       canvas.drawRect(Rect.fromLTWH(0, 0, w, h), vignettePaint);
     }
 
+    // Flash
+    if (flashTimer > 0) {
+      final alpha = (flashTimer / 0.2).clamp(0.0, 0.8);
+      canvas.drawRect(Rect.fromLTWH(0, 0, w, h), Paint()..color = flashColor.withValues(alpha: alpha));
+    }
+
+    // Mode Pulse
+    if (pulseTimer > 0) {
+      final progress = 1.0 - pulseTimer; // 0 to 1
+      final radius = progress * w * 0.8;
+      final alpha = (1.0 - progress).clamp(0.0, 0.5);
+      final pulsePaint = Paint()
+        ..color = pulseColor.withValues(alpha: alpha)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 20 * (1.0 - progress);
+      canvas.drawCircle(Offset(w/2, h/2), radius, pulsePaint);
+    }
+
     // Combo glow pulse
     if (comboGlowTimer > 0) {
       final glowAlpha = (comboGlowTimer * 0.3).clamp(0.0, 0.3);
@@ -113,16 +201,13 @@ class ScreenEffects extends Component with HasGameReference<SpaceEscaperGame> {
       canvas.drawRect(Rect.fromLTWH(0, 0, w, h), glowPaint);
     }
 
-    // Hyperdrive speed lines
+    // Speed lines
     if (_speedLines.isNotEmpty) {
-      final linePaint = Paint()
-        ..color = Colors.white.withValues(alpha: 0.4)
-        ..strokeWidth = 1.5;
       for (final l in _speedLines) {
         canvas.drawLine(
           Offset(l.x, l.y),
           Offset(l.x, l.y + l.length),
-          linePaint,
+          Paint()..color = l.color.withValues(alpha: 0.4)..strokeWidth = 1.5,
         );
       }
     }
@@ -133,11 +218,13 @@ class _SpeedLine {
   double x, y;
   final double length;
   final double speed;
+  final Color color;
 
   _SpeedLine({
     required this.x,
     required this.y,
     required this.length,
     required this.speed,
+    this.color = Colors.white,
   });
 }

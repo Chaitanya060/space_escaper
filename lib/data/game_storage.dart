@@ -579,10 +579,11 @@ class GameStorage {
     }
   }
 
-  static bool isShipUnlocked(String shipId) =>
-      unlockedShips.contains(shipId);
+  static bool isShipUnlocked(String shipId) => true; // TEMPORARY: Testing all ships unlocked
+      // unlockedShips.contains(shipId);
 
-  static bool canAfford(int cost) => totalCoins >= cost;
+  static bool canAfford(int cost) => true; // TEMPORARY: Testing everything free
+      // totalCoins >= cost;
 
   static void resetProgress() {
     _prefs.clear();

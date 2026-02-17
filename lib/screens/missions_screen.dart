@@ -143,6 +143,8 @@ class _MissionsScreenState extends State<MissionsScreen>
     });
   }
 
+
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -166,6 +168,7 @@ class _MissionsScreenState extends State<MissionsScreen>
           ),
         ),
         centerTitle: true,
+        actions: const [],
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.pop(context),
@@ -194,14 +197,94 @@ class _MissionsScreenState extends State<MissionsScreen>
   }
 
   Widget _buildMissionList(List<Mission> missions) {
+    // Check if there are any claimable missions in this specific list
+    final hasClaimable = missions.any((m) => m.isCompleted && !m.claimed);
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: missions.length,
+      itemCount: missions.length + 1, // +1 for the header button
       itemBuilder: (context, index) {
-        final m = missions[index];
+        if (index == 0) {
+          // Claim All Button Header
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: hasClaimable ? () => _claimAllInList(missions) : null,
+                child: Opacity(
+                  opacity: hasClaimable ? 1.0 : 0.5,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: hasClaimable 
+                        ? const LinearGradient(colors: [Color(0xFF22C55E), Color(0xFF16A34A)])
+                        : const LinearGradient(colors: [Colors.grey, Colors.black26]),
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: hasClaimable ? [
+                        BoxShadow(
+                          color: const Color(0xFF22C55E).withValues(alpha: 0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 2),
+                        ),
+                      ] : [],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.done_all, color: Colors.white, size: 18),
+                        SizedBox(width: 8),
+                        Text(
+                          'CLAIM ALL',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        final m = missions[index - 1];
         return _buildMissionCard(m);
       },
     );
+  }
+
+  void _claimAllInList(List<Mission> missions) {
+    int claimCount = 0;
+    for (final m in missions) {
+      if (m.isCompleted && !m.claimed) {
+        m.claimed = true;
+        GameStorage.addCoins(m.coinReward);
+        GameStorage.addStardust(m.stardustReward);
+        GameStorage.addXp(m.xpReward);
+        claimCount++;
+      }
+    }
+
+    if (claimCount > 0) {
+      setState(() {
+        if (missions == dailyMissions) _saveDailyMissions();
+        if (missions == weeklyMissions) _saveWeeklyMissions();
+        if (missions == achievements) _saveAchievements();
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Claimed $claimCount rewards!', style: const TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: const Color(0xFF22C55E),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Widget _buildMissionCard(Mission m) {

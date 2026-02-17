@@ -30,6 +30,8 @@ class SatelliteComponent extends PositionComponent
     add(CircleHitbox());
   }
 
+  double _damageTimer = 0;
+
   @override
   void update(double dt) {
     super.update(dt);
@@ -41,6 +43,18 @@ class SatelliteComponent extends PositionComponent
     // Keep position relative to player
     position.x = player.position.x + cos(_currentAngle) * orbitRadius;
     position.y = player.position.y + sin(_currentAngle) * orbitRadius;
+
+    if (_damageTimer > 0) _damageTimer -= dt;
+  }
+
+  @override
+  void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
+    super.onCollision(intersectionPoints, other);
+    if (other is BossComponent && _damageTimer <= 0) {
+      other.takeDamage(damage);
+      _createHitEffect();
+      _damageTimer = 0.2; // Damage tick every 0.2s
+    }
   }
 
   @override
@@ -51,8 +65,12 @@ class SatelliteComponent extends PositionComponent
       other.takeDamage(damage.toDouble());
       _createHitEffect();
     } else if (other is BossComponent) {
-      other.takeDamage(damage);
-       _createHitEffect();
+       // Handled in onCollision for continuous damage
+       if (_damageTimer <= 0) {
+         other.takeDamage(damage);
+         _createHitEffect();
+         _damageTimer = 0.2;
+       }
     }
   }
 
@@ -73,8 +91,5 @@ class SatelliteComponent extends PositionComponent
 
     canvas.drawCircle(Offset(size.x/2, size.y/2), size.x/2, paint);
     canvas.drawCircle(Offset(size.x/2, size.y/2), size.x/4, corePaint);
-    
-    // Draw connection line to player?
-    // canvas.drawLine(...) - expensive to calculate relative pos here differently
   }
 }

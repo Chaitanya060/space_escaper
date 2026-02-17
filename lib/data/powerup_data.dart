@@ -42,7 +42,7 @@ const List<PowerUpInfo> allPowerUps = [
     type: PowerUpType.shield,
     name: 'Shield Bubble',
     description: 'Absorbs one hit',
-    duration: 10,
+    duration: 20,
     color: Color(0xFF3B82F6),
     icon: Icons.shield,
     spawnWeight: 1.2,
@@ -132,7 +132,7 @@ enum ConsumableType {
   headStart,
   luckyClover,
   shieldCharge,
-  shieldDuration,
+  xpBooster,
 }
 
 class ConsumableInfo {
@@ -159,7 +159,7 @@ const List<ConsumableInfo> allConsumables = [
   ConsumableInfo(
     type: ConsumableType.headStart,
     name: 'Head Start',
-    description: 'Start at 500m with speed boost',
+    description: 'Start at 2000m with speed boost',
     coinCost: 200,
     icon: Icons.rocket_launch,
     color: Color(0xFF3B82F6),
@@ -181,11 +181,11 @@ const List<ConsumableInfo> allConsumables = [
     color: Color(0xFF8B5CF6),
   ),
   ConsumableInfo(
-    type: ConsumableType.shieldDuration,
-    name: 'Extended Shield',
-    description: '+50% longer shield duration',
+    type: ConsumableType.xpBooster,
+    name: 'XP Booster',
+    description: 'Double XP for this run',
     coinCost: 300,
-    icon: Icons.timer_outlined,
+    icon: Icons.school,
     color: Color(0xFF06B6D4),
   ),
 ];

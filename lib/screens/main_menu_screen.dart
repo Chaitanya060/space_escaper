@@ -43,7 +43,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
     _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
 
     // DEBUG: Grant consumables for testing
-    GameStorage.debugGrantConsumables();
+    // GameStorage.debugGrantConsumables();
 
     // Check daily login
     WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -33,6 +33,7 @@ class BulletComponent extends PositionComponent
   final BulletType type;
   final Vector2 velocity;
   final int damage;
+  int penetrationCount;
 
   // Homing
   AlienComponent? _target;
@@ -63,6 +64,7 @@ class BulletComponent extends PositionComponent
     this.type = BulletType.standard,
     Vector2? velocity,
     this.damage = 1,
+    this.penetrationCount = 0,
     double homingTurnRate = 5.0,
   })  : bulletSpeed = speed,
         bulletColor = color,
@@ -285,9 +287,14 @@ class BulletComponent extends PositionComponent
 
         if (type != BulletType.piercing && 
             type != BulletType.spectral && 
-            type != BulletType.blade && // Blades pass through
-            type != BulletType.flame) { // Flame passes through
-          removeFromParent();
+            type != BulletType.blade && 
+            type != BulletType.flame) {
+          
+          if (penetrationCount > 0) {
+            penetrationCount--;
+          } else {
+            removeFromParent();
+          }
         }
     }
   }
