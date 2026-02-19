@@ -8,7 +8,7 @@ class ExplosionComponent extends PositionComponent with HasGameReference<SpaceEs
   final double duration;
   final Color color;
   final double maxRadius;
-  final List<_Particle> parts = [];
+  final List<_Particle> _parts = [];
 
   ExplosionComponent({
     required Vector2 position,
@@ -25,7 +25,7 @@ class ExplosionComponent extends PositionComponent with HasGameReference<SpaceEs
       final ang = rng.nextDouble() * pi * 2;
       final sp = 60 + rng.nextDouble() * 300;
       final sz = 2.0 + rng.nextDouble() * 4; // Varied sizes
-      parts.add(_Particle(Vector2(cos(ang), sin(ang)) * sp, 0.8 + rng.nextDouble() * 0.6, sz));
+      _parts.add(_Particle(Vector2(cos(ang), sin(ang)) * sp, 0.8 + rng.nextDouble() * 0.6, sz));
     }
   }
 
@@ -33,11 +33,11 @@ class ExplosionComponent extends PositionComponent with HasGameReference<SpaceEs
   void update(double dt) {
     super.update(dt);
     t += dt;
-    for (final p in parts) {
+    for (final p in _parts) {
       p.pos += p.vel * dt;
       p.life -= dt;
     }
-    parts.removeWhere((p) => p.life <= 0);
+    _parts.removeWhere((p) => p.life <= 0);
     if (t >= duration) removeFromParent();
   }
 
@@ -51,28 +51,28 @@ class ExplosionComponent extends PositionComponent with HasGameReference<SpaceEs
     if (progress < 0.3) {
       final flashAlpha = (1 - progress / 0.3);
       final flashPaint = Paint()
-        ..color = Colors.white.withOpacity(0.8 * flashAlpha)
+        ..color = Colors.white.withValues(alpha: 0.8 * flashAlpha)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
       canvas.drawCircle(Offset.zero, maxRadius * 0.4 * flashAlpha, flashPaint);
     }
 
     // Expanding shockwave ring
     final ring = Paint()
-      ..color = color.withOpacity(0.7 * alpha)
+      ..color = color.withValues(alpha: 0.7 * alpha)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 5 * (1 - progress);
     canvas.drawCircle(Offset.zero, ringR, ring);
 
     // Inner fire glow
     final glow = Paint()
-      ..color = color.withOpacity(0.35 * alpha)
+      ..color = color.withValues(alpha: 0.35 * alpha)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16);
     canvas.drawCircle(Offset.zero, ringR * 0.5, glow);
 
     // Debris particles with varied sizes
-    for (final p in parts) {
+    for (final p in _parts) {
       final pa = Paint()
-        ..color = color.withOpacity(p.life.clamp(0.0, 1.0))
+        ..color = color.withValues(alpha: p.life.clamp(0.0, 1.0))
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
       canvas.drawCircle(Offset(p.pos.x, p.pos.y), p.sz, pa);
     }

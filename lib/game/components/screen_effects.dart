@@ -30,6 +30,22 @@ class ScreenEffects extends Component with HasGameReference<SpaceEscaperGame> {
   final Random _rng = Random();
   final List<_SpeedLine> _speedLines = [];
 
+  void triggerSpeedBurst() {
+    final w = game.size.x;
+    final h = game.size.y;
+    for (int i = 0; i < 30; i++) {
+      _speedLines.add(_SpeedLine(
+        x: _rng.nextDouble() * w,
+        y: _rng.nextDouble() * h,
+        length: 30 + _rng.nextDouble() * 70,
+        speed: 900 + _rng.nextDouble() * 600,
+        color: Colors.white,
+      ));
+    }
+    triggerFlash(color: Colors.cyanAccent.withValues(alpha: 0.7), duration: 0.12);
+    triggerModePulse(const Color(0xFF00D9FF));
+  }
+
   void triggerShake({double duration = 0.5, double intensity = 8}) {
     shakeTimer = duration;
     shakeIntensity = intensity;

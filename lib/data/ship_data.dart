@@ -96,6 +96,24 @@ class WeaponUpgrade {
   const WeaponUpgrade(this.distance, this.upgradeId, this.label);
 }
 
+class WeaponLevelData {
+  final int level;
+  final String name;
+  final int shots;
+  final int damage;
+  final int distanceThreshold;
+  final String specialBonus;
+
+  const WeaponLevelData({
+    required this.level,
+    required this.name,
+    required this.shots,
+    required this.damage,
+    required this.distanceThreshold,
+    this.specialBonus = '',
+  });
+}
+
 class EvolutionData {
   final int distance;
   final int orbitCount;
@@ -144,6 +162,7 @@ class ShipData {
   final double activeCooldown; // seconds
   final double activeDuration; // seconds the effect lasts
   final List<WeaponUpgrade> weaponUpgrades;
+  final List<WeaponLevelData> weaponLevels;
   final EvolutionData? evolution;
 
   const ShipData({
@@ -172,6 +191,7 @@ class ShipData {
     this.activeCooldown = 15.0,
     this.activeDuration = 2.0,
     this.weaponUpgrades = const [],
+    this.weaponLevels = const [],
     this.evolution,
   });
 
@@ -210,9 +230,13 @@ const List<ShipData> ships = [
     activeName: 'Hyper Boost',
     activeDesc: '2s speed boost, +30% fire rate',
     activeCooldown: 12.0, activeDuration: 2.0,
-    weaponUpgrades: [
-      WeaponUpgrade(25000, 'double_shot', 'Double Shot'),
-      WeaponUpgrade(40000, 'triple_shot', 'Triple Shot'),
+    weaponUpgrades: [],
+    weaponLevels: [
+      WeaponLevelData(level: 1, name: 'Basic Round', shots: 1, damage: 1, distanceThreshold: 0),
+      WeaponLevelData(level: 2, name: 'Piercing Round', shots: 2, damage: 3, distanceThreshold: 8000, specialBonus: 'Ignores 25% armor'),
+      WeaponLevelData(level: 3, name: 'Plasma Slug', shots: 3, damage: 7, distanceThreshold: 20000, specialBonus: 'Leaves burn trail'),
+      WeaponLevelData(level: 4, name: 'Quantum Bullet', shots: 4, damage: 15, distanceThreshold: 40000, specialBonus: 'Phases through shields'),
+      WeaponLevelData(level: 5, name: 'Void Sniper', shots: 5, damage: 32, distanceThreshold: 70000, specialBonus: 'Splits into 3 on impact'),
     ],
     evolution: EvolutionData(
       orbitCount: 1, orbitColor: Color(0xFF00D9FF), orbitDamage: 10,
@@ -241,8 +265,14 @@ const List<ShipData> ships = [
     activeName: 'Thunder Dash',
     activeDesc: 'Dash forward damaging enemies',
     activeCooldown: 10.0, activeDuration: 0.5,
-    weaponUpgrades: [
-      WeaponUpgrade(30000, 'charged_blast', 'Charged Lightning Blast'),
+
+    weaponUpgrades: [],
+    weaponLevels: [
+      WeaponLevelData(level: 1, name: 'Pulse Burst', shots: 5, damage: 2, distanceThreshold: 0),
+      WeaponLevelData(level: 2, name: 'Storm Burst', shots: 7, damage: 4, distanceThreshold: 8000, specialBonus: 'Chains to 1 nearby enemy'),
+      WeaponLevelData(level: 3, name: 'Thunder Volley', shots: 10, damage: 8, distanceThreshold: 20000, specialBonus: 'Stuns enemy 0.5s'),
+      WeaponLevelData(level: 4, name: 'Lightning Barrage', shots: 12, damage: 14, distanceThreshold: 40000, specialBonus: 'Arcs to 2 targets'),
+      WeaponLevelData(level: 5, name: 'Omega Pulse', shots: 15, damage: 28, distanceThreshold: 70000, specialBonus: 'Massive AoE detonation'),
     ],
     evolution: EvolutionData(
       orbitCount: 1, orbitColor: Color(0xFFFFEB3B), orbitDamage: 12,
@@ -271,7 +301,15 @@ const List<ShipData> ships = [
     activeName: 'Comet Storm',
     activeDesc: '5 bouncing projectiles',
     activeCooldown: 14.0, activeDuration: 0.1,
+
     weaponUpgrades: [],
+    weaponLevels: [
+      WeaponLevelData(level: 1, name: 'Ricochet Shot', shots: 1, damage: 2, distanceThreshold: 0, specialBonus: '1 bounce'),
+      WeaponLevelData(level: 2, name: 'Smart Bounce', shots: 2, damage: 5, distanceThreshold: 8000, specialBonus: '2 bounces, seeks enemy'),
+      WeaponLevelData(level: 3, name: 'Triple Comet', shots: 3, damage: 10, distanceThreshold: 20000, specialBonus: '3 bounces, explodes on 3rd hit'),
+      WeaponLevelData(level: 4, name: 'Chaos Comet', shots: 4, damage: 20, distanceThreshold: 40000, specialBonus: '4 bounces, fire trail'),
+      WeaponLevelData(level: 5, name: 'Eternal Comet', shots: 6, damage: 40, distanceThreshold: 70000, specialBonus: 'Infinite bounces, loops screen'),
+    ],
     evolution: EvolutionData(
       orbitCount: 1, orbitColor: Color(0xFFFF9100), orbitDamage: 15,
       desc: 'Orbit sphere causes explosion on contact',
@@ -299,7 +337,15 @@ const List<ShipData> ships = [
     activeName: 'Bullet Cyclone',
     activeDesc: '360° bullet burst',
     activeCooldown: 15.0, activeDuration: 0.1,
+
     weaponUpgrades: [],
+    weaponLevels: [
+      WeaponLevelData(level: 1, name: 'Gatling Fire', shots: 1, damage: 1, distanceThreshold: 0, specialBonus: '8/s fire rate'),
+      WeaponLevelData(level: 2, name: 'Twin Barrels', shots: 1, damage: 2, distanceThreshold: 8000, specialBonus: '12/s fire rate, ignores 15% armor'),
+      WeaponLevelData(level: 3, name: 'Phantom Barrage', shots: 1, damage: 4, distanceThreshold: 20000, specialBonus: '16/s fire rate, tracer rounds mark enemy'),
+      WeaponLevelData(level: 4, name: 'Ghost Shredder', shots: 1, damage: 7, distanceThreshold: 40000, specialBonus: '20/s fire rate, overheat mode'),
+      WeaponLevelData(level: 5, name: 'Spectral Annihilator', shots: 1, damage: 14, distanceThreshold: 70000, specialBonus: '30/s fire rate, phases shields'),
+    ],
     evolution: EvolutionData(
       orbitCount: 1, orbitColor: Color(0xFFA855F7), orbitDamage: 8,
       desc: 'Orbit shield reduces damage 15%',
@@ -331,6 +377,13 @@ const List<ShipData> ships = [
     activeDesc: 'AoE impact damage',
     activeCooldown: 12.0, activeDuration: 0.1,
     weaponUpgrades: [],
+    weaponLevels: [
+      WeaponLevelData(level: 1, name: 'Scatter Shot', shots: 6, damage: 1, distanceThreshold: 0, specialBonus: 'Random spread'),
+      WeaponLevelData(level: 2, name: 'Heavy Buckshot', shots: 8, damage: 3, distanceThreshold: 8000, specialBonus: 'Knockback on all pellets'),
+      WeaponLevelData(level: 3, name: 'Dragon Breath', shots: 10, damage: 6, distanceThreshold: 20000, specialBonus: 'Pellets burn for 2s'),
+      WeaponLevelData(level: 4, name: 'Meteor Cluster', shots: 13, damage: 12, distanceThreshold: 40000, specialBonus: 'Micro-explosions on contact'),
+      WeaponLevelData(level: 5, name: 'Supernova Blast', shots: 18, damage: 25, distanceThreshold: 70000, specialBonus: '360° full-circle explosion'),
+    ],
     evolution: EvolutionData(
       orbitCount: 2, orbitColor: Color(0xFFFF5722), orbitDamage: 15,
       desc: '2 fire orbit spheres (burn damage)',
@@ -360,6 +413,13 @@ const List<ShipData> ships = [
     activeDesc: 'Freezes enemies for 1.5 sec',
     activeCooldown: 18.0, activeDuration: 1.5,
     weaponUpgrades: [],
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Frost Beam', shots: 1, damage: 1, distanceThreshold: 0, specialBonus: 'Slows 20%'),
+      const WeaponLevelData(level: 2, name: 'Blizzard Ray', shots: 1, damage: 3, distanceThreshold: 8000, specialBonus: 'Slows 50%, shatters on freeze'),
+      const WeaponLevelData(level: 3, name: 'Arctic Lance', shots: 2, damage: 7, distanceThreshold: 20000, specialBonus: 'Full freeze 1.5s, AoE shards'),
+      const WeaponLevelData(level: 4, name: 'Polar Vortex', shots: 2, damage: 14, distanceThreshold: 40000, specialBonus: 'Ice storm radius, pulls enemies in'),
+      const WeaponLevelData(level: 5, name: 'Absolute Zero', shots: 3, damage: 28, distanceThreshold: 70000, specialBonus: 'Frozen enemies take x3 damage'),
+    ],
     evolution: EvolutionData(
       orbitCount: 2, orbitColor: Color(0xFF18FFFF), orbitDamage: 8,
       desc: 'Ice shards orbit, freeze on contact',
@@ -389,6 +449,13 @@ const List<ShipData> ships = [
     activeDesc: '8 homing missiles',
     activeCooldown: 16.0, activeDuration: 0.1,
     weaponUpgrades: [],
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Seeker Darts', shots: 3, damage: 1, distanceThreshold: 0, specialBonus: 'Single-target homing'),
+      const WeaponLevelData(level: 2, name: 'Smart Missiles', shots: 5, damage: 3, distanceThreshold: 8000, specialBonus: 'Splits into 2 on impact'),
+      const WeaponLevelData(level: 3, name: 'Hunter Swarm', shots: 7, damage: 6, distanceThreshold: 20000, specialBonus: 'Locks onto 3 different targets'),
+      const WeaponLevelData(level: 4, name: 'Nemesis Cluster', shots: 10, damage: 12, distanceThreshold: 40000, specialBonus: 'Each dart explodes on contact'),
+      const WeaponLevelData(level: 5, name: 'Oblivion Swarm', shots: 15, damage: 25, distanceThreshold: 70000, specialBonus: 'Darts respawn once if missed'),
+    ],
     evolution: EvolutionData(
       orbitCount: 2, orbitColor: Color(0xFFFFEA00), orbitDamage: 10,
       desc: 'Orbit drones auto-target enemies',
@@ -417,6 +484,13 @@ const List<ShipData> ships = [
     activeDesc: 'Slow all enemies for 3s',
     activeCooldown: 20.0, activeDuration: 3.0,
     weaponUpgrades: [],
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Wave Shot', shots: 2, damage: 2, distanceThreshold: 0, specialBonus: 'Passes through walls'),
+      const WeaponLevelData(level: 2, name: 'Resonance Beam', shots: 3, damage: 5, distanceThreshold: 8000, specialBonus: 'Stacks deal +50% on 2nd hit'),
+      const WeaponLevelData(level: 3, name: 'Tsunami Pulse', shots: 4, damage: 10, distanceThreshold: 20000, specialBonus: 'Pulls all enemies toward center'),
+      const WeaponLevelData(level: 4, name: 'Quantum Cascade', shots: 5, damage: 20, distanceThreshold: 40000, specialBonus: 'Destroys enemy shields instantly'),
+      const WeaponLevelData(level: 5, name: 'Reality Wave', shots: 6, damage: 40, distanceThreshold: 70000, specialBonus: 'Dimensional rift dmg zone'),
+    ],
     evolution: EvolutionData(
       orbitCount: 2, orbitColor: Color(0xFF22D3EE), orbitDamage: 12,
       desc: 'Orbit spheres deal true damage',
@@ -445,6 +519,13 @@ const List<ShipData> ships = [
     activeDesc: '6 rockets launched',
     activeCooldown: 14.0, activeDuration: 0.1,
     weaponUpgrades: [],
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Rocket Strike', shots: 1, damage: 5, distanceThreshold: 0, specialBonus: '5m blast radius'),
+      const WeaponLevelData(level: 2, name: 'Cluster Rocket', shots: 2, damage: 12, distanceThreshold: 8000, specialBonus: 'Releases 4 bomblets'),
+      const WeaponLevelData(level: 3, name: 'Hellfire Salvo', shots: 3, damage: 25, distanceThreshold: 20000, specialBonus: 'Napalm burn zone 3s'),
+      const WeaponLevelData(level: 4, name: 'Nova Warhead', shots: 4, damage: 50, distanceThreshold: 40000, specialBonus: 'EMP disables enemies'),
+      const WeaponLevelData(level: 5, name: 'Doomsday Payload', shots: 6, damage: 100, distanceThreshold: 70000, specialBonus: 'Nuclear mushroom screen wipe'),
+    ],
     evolution: EvolutionData(
       orbitCount: 2, orbitColor: Color(0xFF34D399), orbitDamage: 15,
       desc: 'Orbit mines detonate on proximity',
@@ -475,6 +556,13 @@ const List<ShipData> ships = [
     activeDesc: 'Chain lightning burst',
     activeCooldown: 15.0, activeDuration: 3.0,
     weaponUpgrades: [],
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Chain Lightning', shots: 1, damage: 3, distanceThreshold: 0, specialBonus: 'Chains 2 targets'),
+      const WeaponLevelData(level: 2, name: 'Arc Storm', shots: 1, damage: 8, distanceThreshold: 8000, specialBonus: 'Chains 4 targets, +2 dmg per jump'),
+      const WeaponLevelData(level: 3, name: 'Tesla Surge', shots: 2, damage: 16, distanceThreshold: 20000, specialBonus: 'Stuns chained enemies'),
+      const WeaponLevelData(level: 4, name: 'Superconductor', shots: 2, damage: 30, distanceThreshold: 40000, specialBonus: 'Chains 8 targets, full screen'),
+      const WeaponLevelData(level: 5, name: 'Zeus Protocol', shots: 3, damage: 60, distanceThreshold: 70000, specialBonus: 'Infinite chain logic'),
+    ],
     evolution: EvolutionData(
       orbitCount: 3, orbitColor: Color(0xFFD500F9), orbitDamage: 12,
       desc: '3 electric orbit cores',
@@ -503,6 +591,13 @@ const List<ShipData> ships = [
     activeDesc: '2 sec invincible',
     activeCooldown: 20.0, activeDuration: 2.0,
     weaponUpgrades: [],
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Plasma Cannon', shots: 1, damage: 5, distanceThreshold: 0, specialBonus: 'Slows enemies 10%'),
+      const WeaponLevelData(level: 2, name: 'Heavy Plasma', shots: 1, damage: 12, distanceThreshold: 8000, specialBonus: 'Pierces 1 enemy'),
+      const WeaponLevelData(level: 3, name: 'Titan Beam', shots: 2, damage: 25, distanceThreshold: 20000, specialBonus: 'Explodes on impact'),
+      const WeaponLevelData(level: 4, name: 'Fortress Blast', shots: 2, damage: 50, distanceThreshold: 40000, specialBonus: 'Creates temporary shield wall'),
+      const WeaponLevelData(level: 5, name: 'Omega Cannon', shots: 3, damage: 100, distanceThreshold: 70000, specialBonus: 'Massive AoE, stuns all'),
+    ],
     evolution: EvolutionData(
       orbitCount: 3, orbitColor: Color(0xFFF472B6), orbitDamage: 10,
       desc: '3 large protective spheres',
@@ -531,6 +626,13 @@ const List<ShipData> ships = [
     activeDesc: 'Double attack rate for 3s',
     activeCooldown: 18.0, activeDuration: 3.0,
     weaponUpgrades: [],
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Dimension Blades', shots: 2, damage: 4, distanceThreshold: 0, specialBonus: 'Ignores 20% defense'),
+      const WeaponLevelData(level: 2, name: 'Void Slash', shots: 3, damage: 10, distanceThreshold: 8000, specialBonus: 'Bleed 3 dmg/s'),
+      const WeaponLevelData(level: 3, name: 'Rift Cutter', shots: 4, damage: 20, distanceThreshold: 20000, specialBonus: 'Ignores 100% armor'),
+      const WeaponLevelData(level: 4, name: 'Soul Slice', shots: 5, damage: 40, distanceThreshold: 40000, specialBonus: 'Cuts shields into health'),
+      const WeaponLevelData(level: 5, name: 'Soul Severance', shots: 8, damage: 80, distanceThreshold: 70000, specialBonus: 'Hits 3x per swing (multiverse)'),
+    ],
     evolution: EvolutionData(
       orbitCount: 2, orbitColor: Color(0xFFEF4444), orbitDamage: 15,
       desc: 'Dark orbit spheres absorb bullets',
@@ -560,6 +662,13 @@ const List<ShipData> ships = [
     activeName: 'Supernova Burst',
     activeDesc: 'Drones merge into giant star explosion',
     activeCooldown: 20.0, activeDuration: 0.1,
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Forge Shot', shots: 1, damage: 2, distanceThreshold: 0, specialBonus: '2 Drones (5 dmg)'),
+      const WeaponLevelData(level: 2, name: 'Swarm Launch', shots: 1, damage: 5, distanceThreshold: 8000, specialBonus: '4 Drones (12 dmg)'),
+      const WeaponLevelData(level: 3, name: 'Battle Forge', shots: 1, damage: 12, distanceThreshold: 20000, specialBonus: '6 Drones (25 dmg) + Repair'),
+      const WeaponLevelData(level: 4, name: 'Forge Armada', shots: 1, damage: 25, distanceThreshold: 40000, specialBonus: '8 Drones (50 dmg) + Shield'),
+      const WeaponLevelData(level: 5, name: 'Legion Genesis', shots: 1, damage: 50, distanceThreshold: 70000, specialBonus: '12 Drones (100 dmg) + Replicate'),
+    ],
     evolution: EvolutionData(
       orbitCount: 3, orbitColor: Color(0xFFFFD54F), orbitDamage: 15,
       desc: '3 orbit mini-stars',
@@ -587,6 +696,13 @@ const List<ShipData> ships = [
     activeName: 'Crystal Cataclysm',
     activeDesc: 'Giant crystal spike erupts forward',
     activeCooldown: 16.0, activeDuration: 0.1,
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Crystal Shot', shots: 1, damage: 5, distanceThreshold: 0, specialBonus: 'Shatters -> 4 shards'),
+      const WeaponLevelData(level: 2, name: 'Diamond Burst', shots: 1, damage: 12, distanceThreshold: 8000, specialBonus: 'Refracts into lasers'),
+      const WeaponLevelData(level: 3, name: 'Prism Cannon', shots: 2, damage: 25, distanceThreshold: 20000, specialBonus: 'Beams bounce 3x'),
+      const WeaponLevelData(level: 4, name: 'Emperor\'s Gaze', shots: 2, damage: 50, distanceThreshold: 40000, specialBonus: 'Crystal armor 30% resist'),
+      const WeaponLevelData(level: 5, name: 'Prismatic Doom', shots: 3, damage: 100, distanceThreshold: 70000, specialBonus: '1000 Shard Screen Fill'),
+    ],
     evolution: EvolutionData(
       orbitCount: 2, orbitColor: Color(0xFFE0F7FA), orbitDamage: 15,
       desc: 'Diamond orbit shards',
@@ -641,6 +757,13 @@ const List<ShipData> ships = [
     activeName: 'Black Hole Collapse',
     activeDesc: 'Create mini black hole',
     activeCooldown: 22.0, activeDuration: 2.0,
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Event Horizon', shots: 1, damage: 3, distanceThreshold: 0, specialBonus: 'Gravity Well 4s (60 total dmg)'),
+      const WeaponLevelData(level: 2, name: 'Singularity', shots: 1, damage: 3, distanceThreshold: 10000, specialBonus: 'Well 5s (140 dmg) + Anti-Proj'),
+      const WeaponLevelData(level: 3, name: 'Collapse', shots: 1, damage: 3, distanceThreshold: 25000, specialBonus: 'Well 6s (300 dmg) + Crush Weak'),
+      const WeaponLevelData(level: 4, name: 'Supermassive', shots: 1, damage: 3, distanceThreshold: 50000, specialBonus: 'Well 7s (600 dmg) + Collision Dmg'),
+      const WeaponLevelData(level: 5, name: 'Galactic Core', shots: 1, damage: 3, distanceThreshold: 80000, specialBonus: 'Well 10s (1200 dmg) + Secondary Wells'),
+    ],
     evolution: EvolutionData(
       orbitCount: 3, orbitColor: Color(0xFF7C4DFF), orbitDamage: 12,
       desc: 'Dark orbit spheres absorb bullets',
@@ -671,6 +794,13 @@ const List<ShipData> ships = [
     activeName: 'Time Rewind',
     activeDesc: 'Rewind 2 seconds of damage',
     activeCooldown: 25.0, activeDuration: 0.1,
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Time Mine', shots: 1, damage: 10, distanceThreshold: 0, specialBonus: 'Rewind 2s'),
+      const WeaponLevelData(level: 2, name: 'Temporal Charge', shots: 1, damage: 10, distanceThreshold: 10000, specialBonus: 'Rewind 3s + Bomb (50 dmg)'),
+      const WeaponLevelData(level: 3, name: 'Rift Bomb', shots: 1, damage: 10, distanceThreshold: 25000, specialBonus: 'Rewind 4s + Bomb (120 dmg)'),
+      const WeaponLevelData(level: 4, name: 'Chrono Trigger', shots: 1, damage: 10, distanceThreshold: 50000, specialBonus: 'Rewind 5s + Bomb (250 dmg) + Stun'),
+      const WeaponLevelData(level: 5, name: 'Timeline Collapse', shots: 1, damage: 10, distanceThreshold: 80000, specialBonus: 'Rewind 7s + Bomb (500 dmg) + Clone'),
+    ],
     evolution: EvolutionData(
       orbitCount: 2, orbitColor: Color(0xFF1DE9B6), orbitDamage: 20,
       desc: 'Orbit time rings',
@@ -699,6 +829,13 @@ const List<ShipData> ships = [
     activeName: 'Astral Wave',
     activeDesc: 'Massive expanding energy wave',
     activeCooldown: 20.0, activeDuration: 0.1,
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Ion Beam', shots: 1, damage: 20, distanceThreshold: 0, specialBonus: 'Beam 300 dmg'),
+      const WeaponLevelData(level: 2, name: 'Heavy Ion', shots: 1, damage: 20, distanceThreshold: 10000, specialBonus: 'Beam 600 dmg + Pierce'),
+      const WeaponLevelData(level: 3, name: 'Orbital Strike', shots: 1, damage: 20, distanceThreshold: 25000, specialBonus: 'Beam 1200 dmg + Burn Path'),
+      const WeaponLevelData(level: 4, name: 'Constellation Fire', shots: 1, damage: 20, distanceThreshold: 50000, specialBonus: 'Beam 2500 dmg + Stun'),
+      const WeaponLevelData(level: 5, name: 'Galaxy Breaker', shots: 1, damage: 20, distanceThreshold: 80000, specialBonus: 'Beam 5000 dmg + Screen Wipe'),
+    ],
     evolution: EvolutionData(
       orbitCount: 4, orbitColor: Color(0xFF536DFE), orbitDamage: 18,
       desc: '4 orbit celestial orbs',
@@ -727,6 +864,13 @@ const List<ShipData> ships = [
     activeName: 'Infinity Pulse',
     activeDesc: 'Global damage burst',
     activeCooldown: 22.0, activeDuration: 0.1,
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Wave Fire', shots: 6, damage: 10, distanceThreshold: 0, specialBonus: 'Barrage 5s (3x Rate)'),
+      const WeaponLevelData(level: 2, name: 'Flux Cannon', shots: 6, damage: 12, distanceThreshold: 10000, specialBonus: 'Barrage 6s (4x Rate) +25% Dmg'),
+      const WeaponLevelData(level: 3, name: 'Infinity Stream', shots: 6, damage: 15, distanceThreshold: 25000, specialBonus: 'Barrage 7s (5x Rate) +50% Dmg'),
+      const WeaponLevelData(level: 4, name: 'Eternal Barrage', shots: 6, damage: 20, distanceThreshold: 50000, specialBonus: 'Barrage 8s (7x Rate) + Armor'),
+      const WeaponLevelData(level: 5, name: 'Omni Assault', shots: 6, damage: 30, distanceThreshold: 80000, specialBonus: 'Barrage 10s (10x Rate) + Invuln'),
+    ],
     evolution: EvolutionData(
       orbitCount: 2, orbitColor: Color(0xFFE0E0E0), orbitDamage: 25,
       desc: 'Orbit infinity rings',
@@ -757,6 +901,13 @@ const List<ShipData> ships = [
     activeName: 'Judgment Ray',
     activeDesc: 'Massive vertical laser',
     activeCooldown: 20.0, activeDuration: 1.5,
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Sacred Lance', shots: 1, damage: 15, distanceThreshold: 0, specialBonus: 'Barrier 5s (200 blk) + Heal'),
+      const WeaponLevelData(level: 2, name: 'Holy Strike', shots: 1, damage: 20, distanceThreshold: 10000, specialBonus: 'Barrier 6s (400 blk) + Reflect'),
+      const WeaponLevelData(level: 3, name: 'Divine Piercer', shots: 1, damage: 30, distanceThreshold: 25000, specialBonus: 'Barrier 7s (800 blk) + Amplify'),
+      const WeaponLevelData(level: 4, name: 'Seraphim Spear', shots: 1, damage: 50, distanceThreshold: 50000, specialBonus: 'Barrier 8s (1500 blk) + Dmg Boost'),
+      const WeaponLevelData(level: 5, name: 'Godkiller', shots: 1, damage: 80, distanceThreshold: 80000, specialBonus: 'Barrier 10s (3000 blk) + Heal Zones'),
+    ],
     evolution: EvolutionData(
       orbitCount: 5, orbitColor: Color(0xFFFFD600), orbitDamage: 20,
       desc: '5 orbit light orbs + damage aura',
@@ -785,6 +936,13 @@ const List<ShipData> ships = [
     activeName: 'Abyss Surge',
     activeDesc: 'Screen darkens, enemies slowed',
     activeCooldown: 18.0, activeDuration: 3.0,
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Void Strike', shots: 4, damage: 8, distanceThreshold: 0, specialBonus: 'Wave +25% Dmg (6s)'),
+      const WeaponLevelData(level: 2, name: 'Abyss Lash', shots: 4, damage: 8, distanceThreshold: 10000, specialBonus: 'Wave +50% Dmg + Slow'),
+      const WeaponLevelData(level: 3, name: 'Eldritch Storm', shots: 4, damage: 8, distanceThreshold: 25000, specialBonus: 'Wave +75% Dmg + Corruption'),
+      const WeaponLevelData(level: 4, name: 'Void Reaver', shots: 4, damage: 8, distanceThreshold: 50000, specialBonus: 'Wave +100% Dmg + Tentacles'),
+      const WeaponLevelData(level: 5, name: 'Outer God', shots: 4, damage: 8, distanceThreshold: 80000, specialBonus: 'Wave +150% Dmg + Void Zones'),
+    ],
     evolution: EvolutionData(
       orbitCount: 4, orbitColor: Color(0xFFD50000), orbitDamage: 22,
       desc: 'Shadow orbit spikes',
@@ -813,6 +971,13 @@ const List<ShipData> ships = [
     activeName: 'Dimensional Collapse',
     activeDesc: 'All enemies pulled to center',
     activeCooldown: 22.0, activeDuration: 2.0,
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Shatter Shot', shots: 1, damage: 25, distanceThreshold: 0, specialBonus: 'Collapse 3s (2x Dmg)'),
+      const WeaponLevelData(level: 2, name: 'Quantum Split', shots: 1, damage: 25, distanceThreshold: 10000, specialBonus: 'Collapse 4s (3x Dmg) + Echoes'),
+      const WeaponLevelData(level: 3, name: 'Reality Break', shots: 1, damage: 25, distanceThreshold: 25000, specialBonus: 'Collapse 5s (4x Dmg) + No Dodge'),
+      const WeaponLevelData(level: 4, name: 'Flux Cannon', shots: 1, damage: 25, distanceThreshold: 50000, specialBonus: 'Collapse 6s (6x Dmg) + 3 Positions'),
+      const WeaponLevelData(level: 5, name: 'Zero Point', shots: 1, damage: 25, distanceThreshold: 80000, specialBonus: 'Collapse 8s (10x Dmg) + 5 Positions'),
+    ],
     evolution: EvolutionData(
       orbitCount: 3, orbitColor: Color(0xFFD500F9), orbitDamage: 25,
       desc: 'Orbit quantum shards',
@@ -841,6 +1006,13 @@ const List<ShipData> ships = [
     activeName: 'Supernova',
     activeDesc: 'Massive star explosion',
     activeCooldown: 25.0, activeDuration: 0.1,
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Core Flare', shots: 1, damage: 30, distanceThreshold: 0, specialBonus: 'Supernova 1500 Dmg'),
+      const WeaponLevelData(level: 2, name: 'Solar Eruption', shots: 1, damage: 30, distanceThreshold: 10000, specialBonus: 'Supernova 3000 Dmg + Invuln'),
+      const WeaponLevelData(level: 3, name: 'Red Giant', shots: 1, damage: 30, distanceThreshold: 25000, specialBonus: 'Supernova 6000 Dmg + Burn Zones'),
+      const WeaponLevelData(level: 4, name: 'Nova Burst', shots: 1, damage: 30, distanceThreshold: 50000, specialBonus: 'Supernova 12000 Dmg + Mini Stars'),
+      const WeaponLevelData(level: 5, name: 'Hypernova', shots: 1, damage: 30, distanceThreshold: 80000, specialBonus: 'Supernova 25000 Dmg + Execute'),
+    ],
     evolution: EvolutionData(
       orbitCount: 6, orbitColor: Color(0xFFFFAB00), orbitDamage: 25,
       desc: '6 orbit mini stars',
@@ -869,6 +1041,13 @@ const List<ShipData> ships = [
     activeName: 'Cosmic Rain',
     activeDesc: 'Rain of cosmic projectiles',
     activeCooldown: 20.0, activeDuration: 0.1,
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Judgement', shots: 1, damage: 50, distanceThreshold: 0, specialBonus: 'Lightning 500 Dmg + Exec 15%'),
+      const WeaponLevelData(level: 2, name: 'Divine Bolt', shots: 1, damage: 50, distanceThreshold: 10000, specialBonus: 'Lightning 1000 Dmg + Stun'),
+      const WeaponLevelData(level: 3, name: 'Wrath', shots: 1, damage: 50, distanceThreshold: 25000, specialBonus: 'Lightning 2000 Dmg + Chain'),
+      const WeaponLevelData(level: 4, name: 'Skyfall', shots: 1, damage: 50, distanceThreshold: 50000, specialBonus: 'Lightning 4000 Dmg + Elec Zones'),
+      const WeaponLevelData(level: 5, name: 'Apocalypse', shots: 1, damage: 50, distanceThreshold: 80000, specialBonus: 'Lightning 8000 Dmg + Exec 40%'),
+    ],
     evolution: EvolutionData(
       orbitCount: 4, orbitColor: Color(0xFF40C4FF), orbitDamage: 30,
       desc: 'Halo ring orbit',
@@ -897,6 +1076,13 @@ const List<ShipData> ships = [
     activeName: 'Genesis Collapse',
     activeDesc: 'Screen distortion + massive damage',
     activeCooldown: 30.0, activeDuration: 2.0,
+    weaponLevels: [
+      const WeaponLevelData(level: 1, name: 'Alpha', shots: 1, damage: 100, distanceThreshold: 0, specialBonus: 'Omega 8s (3x Dmg, 2x Spd)'),
+      const WeaponLevelData(level: 2, name: 'Beta', shots: 1, damage: 100, distanceThreshold: 10000, specialBonus: 'Omega 10s (5x Dmg) + No Proj'),
+      const WeaponLevelData(level: 3, name: 'Gamma', shots: 1, damage: 100, distanceThreshold: 25000, specialBonus: 'Omega 12s (8x Dmg) + Blk Holes'),
+      const WeaponLevelData(level: 4, name: 'Delta', shots: 1, damage: 100, distanceThreshold: 50000, specialBonus: 'Omega 15s (12x Dmg) + Time Slow'),
+      const WeaponLevelData(level: 5, name: 'Omega', shots: 1, damage: 100, distanceThreshold: 80000, specialBonus: 'Omega 20s (20x Dmg) + Reality Tear'),
+    ],
     evolution: EvolutionData(
       orbitCount: 5, orbitColor: Color(0xFFFFFFFF), orbitDamage: 35,
       desc: '5 orbit singularities',

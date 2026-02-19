@@ -6,6 +6,21 @@ enum BossAttackType {
   aoeBlast, spawnMinions, chargeRush, shieldActivate,
   debuffPlayer, summonHazards, regenerate, splitClone,
   screenWipe, vortexPull, groundPound, rapidFire,
+  // Tier 1 boss-specific attacks
+  solarFlareRings, heatWaveBeam, coronaShield, sunspotMines,
+  voidTendrils, darkMatterOrbs, singularityPulse,
+  laserGridPattern, defenseTurrets, empBlast,
+  chainLightning, thunderDive, staticField, lightningStorm,
+  iceSpikeRain, freezeBeam, blizzard, iceWallMaze, permafrost,
+  // Tier 2 boss-specific attacks
+  hurricaneForce, tornadoSpawns, debrisHurricane, windBlades, shieldCharge,
+  plasmaTail, acidMissiles, clawPincer, undergroundAssault,
+  flameBreath, wingGust, meteorSummon, dragonDive, supernova,
+  deathStare, visionBlast, hypnoticPulse,
+  webTrap, legSlam, poisonBite, webCocoon,
+  lavaPool, fireballVolley, moltenFists, volcanicEruption,
+  shadowClone, eclipseBeam,
+  eggSacs,
 }
 
 // Movement styles
@@ -88,13 +103,14 @@ const List<BossConfig> allBosses = [
     weakness: 'Shoot core when shield drops',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Solar Flares', type: BossAttackType.radialBurst, projectileCount: 6, speed: 180, cooldown: 3.0),
-        BossAttack(name: 'Heat Wave', type: BossAttackType.aoeBlast, cooldown: 5.0),
+        BossAttack(name: 'Solar Flares', type: BossAttackType.solarFlareRings, projectileCount: 3, speed: 120, cooldown: 4.0),
+        BossAttack(name: 'Heat Wave', type: BossAttackType.heatWaveBeam, cooldown: 6.0),
       ]),
       BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.2, projectileSpeedMult: 1.2, attacks: [
-        BossAttack(name: 'Solar Flares', type: BossAttackType.radialBurst, projectileCount: 8, speed: 220),
-        BossAttack(name: 'Corona Shield', type: BossAttackType.shieldActivate, cooldown: 10.0),
-        BossAttack(name: 'Sunspot Mines', type: BossAttackType.summonHazards, projectileCount: 4),
+        BossAttack(name: 'Solar Flares', type: BossAttackType.solarFlareRings, projectileCount: 3, speed: 150),
+        BossAttack(name: 'Corona Shield', type: BossAttackType.coronaShield, cooldown: 12.0),
+        BossAttack(name: 'Sunspot Mines', type: BossAttackType.sunspotMines, projectileCount: 5),
+        BossAttack(name: 'Heat Wave', type: BossAttackType.heatWaveBeam, cooldown: 5.0),
       ]),
     ],
   ),
@@ -107,13 +123,13 @@ const List<BossConfig> allBosses = [
     weakness: 'Destroy tentacles to stun',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Gravity Vortex', type: BossAttackType.vortexPull, cooldown: 4.0),
-        BossAttack(name: 'Void Tendrils', type: BossAttackType.radialBurst, projectileCount: 6, speed: 160),
+        BossAttack(name: 'Gravity Vortex', type: BossAttackType.singularityPulse, cooldown: 5.0),
+        BossAttack(name: 'Void Tendrils', type: BossAttackType.voidTendrils, projectileCount: 8, speed: 200),
       ]),
       BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.2, projectileSpeedMult: 1.2, attacks: [
-        BossAttack(name: 'Dark Matter Orbs', type: BossAttackType.summonHazards, projectileCount: 3),
-        BossAttack(name: 'Singularity Pulse', type: BossAttackType.aoeBlast, cooldown: 6.0),
-        BossAttack(name: 'Void Tendrils', type: BossAttackType.radialBurst, projectileCount: 8, speed: 200),
+        BossAttack(name: 'Dark Matter Orbs', type: BossAttackType.darkMatterOrbs, projectileCount: 6),
+        BossAttack(name: 'Singularity Pulse', type: BossAttackType.singularityPulse, cooldown: 6.0),
+        BossAttack(name: 'Void Tendrils', type: BossAttackType.voidTendrils, projectileCount: 12, speed: 250),
       ]),
     ],
   ),
@@ -126,13 +142,14 @@ const List<BossConfig> allBosses = [
     weakness: 'Destroy power cores on sides',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Laser Grid', type: BossAttackType.laserSweep, cooldown: 4.0),
-        BossAttack(name: 'Missile Storm', type: BossAttackType.homingMissiles, projectileCount: 6, speed: 150),
+        BossAttack(name: 'Laser Grid', type: BossAttackType.laserGridPattern, cooldown: 5.0),
+        BossAttack(name: 'Missile Storm', type: BossAttackType.homingMissiles, projectileCount: 5, speed: 150),
       ]),
       BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.3, projectileSpeedMult: 1.3, attacks: [
-        BossAttack(name: 'Missile Storm', type: BossAttackType.homingMissiles, projectileCount: 10, speed: 180),
-        BossAttack(name: 'Defense Turrets', type: BossAttackType.rapidFire, projectileCount: 4),
-        BossAttack(name: 'EMP Blast', type: BossAttackType.debuffPlayer, cooldown: 12.0),
+        BossAttack(name: 'Missile Storm', type: BossAttackType.homingMissiles, projectileCount: 8, speed: 180),
+        BossAttack(name: 'Defense Turrets', type: BossAttackType.defenseTurrets, projectileCount: 3),
+        BossAttack(name: 'EMP Blast', type: BossAttackType.empBlast, cooldown: 12.0),
+        BossAttack(name: 'Laser Grid', type: BossAttackType.laserGridPattern, cooldown: 4.0),
       ]),
     ],
   ),
@@ -145,13 +162,14 @@ const List<BossConfig> allBosses = [
     weakness: 'Only vulnerable during charge (glows yellow)',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Chain Lightning', type: BossAttackType.radialBurst, projectileCount: 8, speed: 250),
-        BossAttack(name: 'Thunder Dive', type: BossAttackType.chargeRush, cooldown: 6.0),
+        BossAttack(name: 'Chain Lightning', type: BossAttackType.chainLightning, projectileCount: 1, speed: 400),
+        BossAttack(name: 'Thunder Dive', type: BossAttackType.thunderDive, cooldown: 8.0),
       ]),
       BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.3, projectileSpeedMult: 1.3, attacks: [
-        BossAttack(name: 'Static Field', type: BossAttackType.summonHazards, projectileCount: 6),
-        BossAttack(name: 'Lightning Storm', type: BossAttackType.radialBurst, projectileCount: 12, speed: 300),
-        BossAttack(name: 'EMP', type: BossAttackType.debuffPlayer, cooldown: 10.0),
+        BossAttack(name: 'Static Field', type: BossAttackType.staticField, cooldown: 10.0),
+        BossAttack(name: 'Lightning Storm', type: BossAttackType.lightningStorm, projectileCount: 6, cooldown: 8.0),
+        BossAttack(name: 'Chain Lightning', type: BossAttackType.chainLightning, projectileCount: 3, speed: 450),
+        BossAttack(name: 'Thunder Dive', type: BossAttackType.thunderDive, cooldown: 6.0),
       ]),
     ],
   ),
@@ -164,13 +182,14 @@ const List<BossConfig> allBosses = [
     weakness: 'Fire weapons deal 3x damage',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Ice Spike Rain', type: BossAttackType.radialBurst, projectileCount: 10, speed: 180),
-        BossAttack(name: 'Freeze Beam', type: BossAttackType.laserSweep, cooldown: 5.0),
+        BossAttack(name: 'Ice Spike Rain', type: BossAttackType.iceSpikeRain, projectileCount: 8, speed: 200),
+        BossAttack(name: 'Freeze Beam', type: BossAttackType.freezeBeam, cooldown: 6.0),
       ]),
       BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.2, armorMult: 0.8, projectileSpeedMult: 1.4, attacks: [
-        BossAttack(name: 'Blizzard', type: BossAttackType.aoeBlast, cooldown: 8.0),
-        BossAttack(name: 'Ice Wall Maze', type: BossAttackType.summonHazards, projectileCount: 8),
-        BossAttack(name: 'Permafrost', type: BossAttackType.debuffPlayer, cooldown: 10.0),
+        BossAttack(name: 'Blizzard', type: BossAttackType.blizzard, cooldown: 12.0),
+        BossAttack(name: 'Ice Spike Rain', type: BossAttackType.iceSpikeRain, projectileCount: 12, speed: 250),
+        BossAttack(name: 'Freeze Beam', type: BossAttackType.freezeBeam, cooldown: 5.0),
+        BossAttack(name: 'Permafrost', type: BossAttackType.permafrost, cooldown: 15.0),
       ]),
     ],
   ),
@@ -184,13 +203,14 @@ const List<BossConfig> allBosses = [
     rewardCoins: 4000, rewardSpecial: 'shieldCharge',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Hurricane Force', type: BossAttackType.vortexPull, cooldown: 3.0),
-        BossAttack(name: 'Tornado Spawns', type: BossAttackType.summonHazards, projectileCount: 5),
+        BossAttack(name: 'Hurricane Force', type: BossAttackType.hurricaneForce, cooldown: 8.0),
+        BossAttack(name: 'Tornado Spawns', type: BossAttackType.tornadoSpawns, projectileCount: 3),
       ]),
       BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.4, projectileSpeedMult: 1.3, attacks: [
-        BossAttack(name: 'Debris Hurricane', type: BossAttackType.radialBurst, projectileCount: 30, speed: 280),
-        BossAttack(name: 'Wind Blades', type: BossAttackType.targetedShot, projectileCount: 8, speed: 350),
-        BossAttack(name: 'Lightning Strikes', type: BossAttackType.radialBurst, projectileCount: 6, speed: 400),
+        BossAttack(name: 'Debris Hurricane', type: BossAttackType.debrisHurricane, projectileCount: 15, speed: 300),
+        BossAttack(name: 'Wind Blades', type: BossAttackType.windBlades, projectileCount: 6, speed: 400),
+        BossAttack(name: 'Lightning Strikes', type: BossAttackType.lightningStorm, projectileCount: 5), // Reusing Tier 1 type as base
+        BossAttack(name: 'Shield Charge', type: BossAttackType.shieldCharge, cooldown: 12.0),
       ]),
     ],
   ),
@@ -203,13 +223,13 @@ const List<BossConfig> allBosses = [
     weakness: 'Hit glowing weak spot on tail',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Plasma Tail', type: BossAttackType.rapidFire, projectileCount: 3, speed: 300),
-        BossAttack(name: 'Acid Missiles', type: BossAttackType.homingMissiles, projectileCount: 8, speed: 200),
+        BossAttack(name: 'Plasma Tail', type: BossAttackType.plasmaTail, projectileCount: 1, speed: 350),
+        BossAttack(name: 'Acid Missiles', type: BossAttackType.acidMissiles, projectileCount: 5, speed: 200),
       ]),
-      BossPhase(healthThreshold: 0.5, attackSpeedMult: 2.0, projectileSpeedMult: 1.5, attacks: [
-        BossAttack(name: 'Claw Pincer', type: BossAttackType.chargeRush, cooldown: 3.0),
-        BossAttack(name: 'Underground Assault', type: BossAttackType.groundPound, cooldown: 5.0),
-        BossAttack(name: 'Rage Mode', type: BossAttackType.rapidFire, projectileCount: 6, speed: 400),
+      BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.5, projectileSpeedMult: 1.2, attacks: [
+        BossAttack(name: 'Claw Pincer', type: BossAttackType.clawPincer, cooldown: 4.0),
+        BossAttack(name: 'Underground Assault', type: BossAttackType.undergroundAssault, cooldown: 6.0),
+        BossAttack(name: 'Acid Missiles (Rage)', type: BossAttackType.acidMissiles, projectileCount: 8, speed: 250),
       ]),
     ],
   ),
@@ -222,14 +242,14 @@ const List<BossConfig> allBosses = [
     weakness: 'Mouth during breath, belly during flight',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Flame Breath', type: BossAttackType.radialBurst, projectileCount: 12, speed: 250),
-        BossAttack(name: 'Wing Gust', type: BossAttackType.aoeBlast, cooldown: 4.0),
-        BossAttack(name: 'Meteor Summon', type: BossAttackType.summonHazards, projectileCount: 10),
+        BossAttack(name: 'Flame Breath', type: BossAttackType.flameBreath, projectileCount: 20, speed: 280),
+        BossAttack(name: 'Wing Gust', type: BossAttackType.wingGust, cooldown: 5.0),
+        BossAttack(name: 'Meteor Summon', type: BossAttackType.meteorSummon, projectileCount: 6),
       ]),
-      BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.6, projectileSpeedMult: 1.4, attacks: [
-        BossAttack(name: 'Inferno Mode', type: BossAttackType.radialBurst, projectileCount: 20, speed: 300),
-        BossAttack(name: 'Dragon Dive', type: BossAttackType.chargeRush, cooldown: 3.0),
-        BossAttack(name: 'Supernova', type: BossAttackType.screenWipe, cooldown: 8.0),
+      BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.3, projectileSpeedMult: 1.4, attacks: [
+        BossAttack(name: 'Inferno Flames', type: BossAttackType.flameBreath, projectileCount: 30, speed: 320),
+        BossAttack(name: 'Dragon Dive', type: BossAttackType.dragonDive, cooldown: 4.0),
+        BossAttack(name: 'Supernova', type: BossAttackType.supernova, cooldown: 15.0),
       ]),
     ],
   ),
@@ -238,17 +258,17 @@ const List<BossConfig> allBosses = [
     spawnDistance: 29000, maxHealth: 12000, width: 130, height: 130,
     movement: BossMovement.teleport, shape: BossShape.eye,
     color: Color(0xFFD500F9), glowColor: Color(0x80D500F9),
-    rewardCoins: 8000, rewardPowerUp: 'coinStorm',
+    rewardCoins: 8000,
     weakness: 'Only real eye takes damage',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Death Stare', type: BossAttackType.laserSweep, cooldown: 3.0),
-        BossAttack(name: 'Vision Blast', type: BossAttackType.radialBurst, projectileCount: 8, speed: 300),
+        BossAttack(name: 'Death Stare', type: BossAttackType.deathStare, cooldown: 4.0),
+        BossAttack(name: 'Vision Blast', type: BossAttackType.visionBlast, projectileCount: 1, speed: 350),
       ]),
-      BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.4, projectileSpeedMult: 1.4, attacks: [
+      BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.2, projectileSpeedMult: 1.2, attacks: [
         BossAttack(name: 'Clone Army', type: BossAttackType.splitClone, projectileCount: 4),
-        BossAttack(name: 'Hypnotic Pulse', type: BossAttackType.debuffPlayer, cooldown: 10.0),
-        BossAttack(name: 'Death Stare', type: BossAttackType.laserSweep, cooldown: 2.0),
+        BossAttack(name: 'Hypnotic Pulse', type: BossAttackType.hypnoticPulse, cooldown: 12.0),
+        BossAttack(name: 'Death Stare', type: BossAttackType.deathStare, cooldown: 3.0),
       ]),
     ],
   ),
@@ -261,14 +281,14 @@ const List<BossConfig> allBosses = [
     weakness: 'Must destroy all legs first',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Web Trap', type: BossAttackType.debuffPlayer, cooldown: 5.0),
-        BossAttack(name: 'Egg Sacs', type: BossAttackType.spawnMinions, projectileCount: 8),
-        BossAttack(name: 'Leg Slam', type: BossAttackType.groundPound, cooldown: 3.0),
+        BossAttack(name: 'Web Trap', type: BossAttackType.webTrap, cooldown: 6.0),
+        BossAttack(name: 'Egg Sacs', type: BossAttackType.eggSacs, projectileCount: 3), // Renamed from spawnMinions to specific type
+        BossAttack(name: 'Leg Slam', type: BossAttackType.legSlam, cooldown: 4.0),
       ]),
-      BossPhase(healthThreshold: 0.4, attackSpeedMult: 1.5, projectileSpeedMult: 1.4, attacks: [
-        BossAttack(name: 'Poison Bite', type: BossAttackType.chargeRush, cooldown: 2.0),
-        BossAttack(name: 'Web Cocoon', type: BossAttackType.debuffPlayer, cooldown: 8.0),
-        BossAttack(name: 'Egg Sacs', type: BossAttackType.spawnMinions, projectileCount: 15),
+      BossPhase(healthThreshold: 0.4, attackSpeedMult: 1.4, projectileSpeedMult: 1.4, attacks: [
+        BossAttack(name: 'Poison Bite', type: BossAttackType.poisonBite, cooldown: 3.0),
+        BossAttack(name: 'Web Cocoon', type: BossAttackType.webCocoon, cooldown: 10.0),
+        BossAttack(name: 'Egg Sacs', type: BossAttackType.eggSacs, projectileCount: 5),
       ]),
     ],
   ),
@@ -281,13 +301,13 @@ const List<BossConfig> allBosses = [
     weakness: 'Cool down armor with ice weapons',
     phases: [
       BossPhase(healthThreshold: 1.0, armorMult: 0.5, attacks: [
-        BossAttack(name: 'Lava Pool', type: BossAttackType.summonHazards, projectileCount: 6),
-        BossAttack(name: 'Fireball Volley', type: BossAttackType.radialBurst, projectileCount: 16, speed: 220),
+        BossAttack(name: 'Lava Pool', type: BossAttackType.lavaPool, projectileCount: 4),
+        BossAttack(name: 'Fireball Volley', type: BossAttackType.fireballVolley, projectileCount: 5, speed: 250),
       ]),
-      BossPhase(healthThreshold: 0.5, armorMult: 0.5, attackSpeedMult: 1.5, projectileSpeedMult: 1.4, attacks: [
-        BossAttack(name: 'Molten Fists', type: BossAttackType.groundPound, cooldown: 3.0),
-        BossAttack(name: 'Volcanic Eruption', type: BossAttackType.screenWipe, cooldown: 10.0),
-        BossAttack(name: 'Fireball Volley', type: BossAttackType.radialBurst, projectileCount: 24, speed: 280),
+      BossPhase(healthThreshold: 0.5, armorMult: 0.5, attackSpeedMult: 1.3, projectileSpeedMult: 1.3, attacks: [
+        BossAttack(name: 'Molten Fists', type: BossAttackType.moltenFists, cooldown: 4.0),
+        BossAttack(name: 'Volcanic Eruption', type: BossAttackType.volcanicEruption, cooldown: 12.0),
+        BossAttack(name: 'Fireball Volley', type: BossAttackType.fireballVolley, projectileCount: 8, speed: 300),
       ]),
     ],
   ),
@@ -300,13 +320,13 @@ const List<BossConfig> allBosses = [
     weakness: 'Only vulnerable 2s after teleport',
     phases: [
       BossPhase(healthThreshold: 1.0, attacks: [
-        BossAttack(name: 'Shadow Clone', type: BossAttackType.splitClone, projectileCount: 5),
-        BossAttack(name: 'Eclipse Beam', type: BossAttackType.laserSweep, cooldown: 3.0),
+        BossAttack(name: 'Shadow Clone', type: BossAttackType.shadowClone, projectileCount: 1),
+        BossAttack(name: 'Eclipse Beam', type: BossAttackType.eclipseBeam, cooldown: 5.0),
       ]),
       BossPhase(healthThreshold: 0.5, attackSpeedMult: 1.5, projectileSpeedMult: 1.5, attacks: [
-        BossAttack(name: 'Dark Matter Void', type: BossAttackType.summonHazards, projectileCount: 6),
-        BossAttack(name: 'Teleport Assault', type: BossAttackType.chargeRush, cooldown: 2.0),
-        BossAttack(name: 'Nightmare Realm', type: BossAttackType.debuffPlayer, cooldown: 10.0),
+        BossAttack(name: 'Dark Matter Void', type: BossAttackType.darkMatterOrbs, projectileCount: 8), // Reused
+        BossAttack(name: 'Teleport Assault', type: BossAttackType.chargeRush, cooldown: 2.5),
+        BossAttack(name: 'Eclipse Beam', type: BossAttackType.eclipseBeam, cooldown: 4.0),
       ]),
     ],
   ),

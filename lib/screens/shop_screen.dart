@@ -14,11 +14,21 @@ class ShopScreen extends StatefulWidget {
 class _ShopScreenState extends State<ShopScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final List<_CoinPack> _coinPacks = const [
+    _CoinPack(price: '₹19', coins: 2000, tag: 'Mini Pack', color: Color(0xFFFFD93D)),
+    _CoinPack(price: '₹29', coins: 3500, tag: 'Best for Beginners', color: Color(0xFFFFD93D)),
+    _CoinPack(price: '₹49', coins: 7000, tag: 'Popular', color: Color(0xFF00D9FF)),
+    _CoinPack(price: '₹79', coins: 12000, tag: 'Most Value', color: Color(0xFF00D9FF)),
+    _CoinPack(price: '₹99', coins: 16000, tag: 'Best Seller ⭐', color: Color(0xFF00D9FF)),
+    _CoinPack(price: '₹199', coins: 40000, tag: 'Mega Pack', color: Color(0xFFA855F7)),
+    _CoinPack(price: '₹299', coins: 70000, tag: 'Ultra Pack', color: Color(0xFFA855F7)),
+    _CoinPack(price: '₹499', coins: 150000, tag: 'Galaxy Pack 🚀', color: Color(0xFFA855F7)),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -57,6 +67,7 @@ class _ShopScreenState extends State<ShopScreen>
           tabs: const [
             Tab(text: 'ITEMS'),
             Tab(text: 'SKILLS'),
+            Tab(text: 'COINS'),
           ],
         ),
       ),
@@ -70,6 +81,7 @@ class _ShopScreenState extends State<ShopScreen>
               children: [
                 _buildConsumablesTab(),
                 _buildSkillsTab(),
+                _buildCoinsTab(),
               ],
             ),
           ),
@@ -291,4 +303,109 @@ class _ShopScreenState extends State<ShopScreen>
       },
     );
   }
+
+  Widget _buildCoinsTab() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _coinPacks.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0A1929),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFFD93D).withValues(alpha: 0.25)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Recommended Coin Packs', style: GoogleFonts.orbitron(
+                  color: const Color(0xFFFFD93D), fontWeight: FontWeight.w800, fontSize: 14)),
+                const SizedBox(height: 6),
+                Text('Starter • Mid • High Tier', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+              ],
+            ),
+          );
+        }
+        final p = _coinPacks[index - 1];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0A1929),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: p.color.withValues(alpha: 0.35)),
+          ),
+          child: ListTile(
+            leading: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: p.color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.monetization_on, color: Colors.white, size: 24),
+            ),
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('${p.coins} COINS', style: GoogleFonts.orbitron(
+                  color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: p.color.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: p.color.withValues(alpha: 0.6)),
+                  ),
+                  child: Text(p.tag, style: GoogleFonts.orbitron(
+                    color: p.color, fontWeight: FontWeight.w700, fontSize: 10)),
+                ),
+              ],
+            ),
+            subtitle: Text(p.price, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            trailing: GestureDetector(
+              onTap: () => _purchaseCoins(p),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [p.color, p.color.withValues(alpha: 0.7)]),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.shopping_bag, color: Colors.white, size: 14),
+                    const SizedBox(width: 6),
+                    Text(p.price, style: GoogleFonts.orbitron(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _purchaseCoins(_CoinPack p) {
+    GameStorage.addCoins(p.coins);
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Purchased ${p.coins} coins'),
+        backgroundColor: p.color,
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+}
+
+class _CoinPack {
+  final String price;
+  final int coins;
+  final String tag;
+  final Color color;
+  const _CoinPack({required this.price, required this.coins, required this.tag, required this.color});
 }

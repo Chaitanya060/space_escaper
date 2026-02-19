@@ -58,6 +58,17 @@ class EnemyWaveSystem extends Component with HasGameReference<SpaceEscaperGame> 
     if (game.gameMode == GameMode.gauntlet) {
       game.bannerText = 'GAUNTLET WAVE $gauntletWave/$gauntletTotal';
       game.bannerColor = const Color(0xFFFF6B35);
+
+      final t = (gauntletWave / gauntletTotal).clamp(0.0, 1.0);
+      final pulse = Color.lerp(const Color(0xFF22C55E), const Color(0xFFEF4444), t) ?? const Color(0xFFFF6B35);
+      game.screenEffects.triggerModePulse(pulse);
+      game.screenEffects.triggerFlash(color: pulse.withValues(alpha: 0.25), duration: 0.16);
+
+      // Late gauntlet: quick instability burst
+      if (gauntletWave >= 7) {
+        game.currentPhysicsMode = 'turbulence';
+        game.physicsTimer = 3.5;
+      }
     } else {
       game.bannerText = 'SWARM INCOMING!';
       game.bannerColor = const Color(0xFFEF4444);
@@ -76,9 +87,10 @@ class EnemyWaveSystem extends Component with HasGameReference<SpaceEscaperGame> 
     // Determine enemy count (scales with distance)
     int baseCount = (8 + min((game.distance / 2000).floor(), 7)).toInt();
     if (game.gameMode == GameMode.gauntlet) {
-      baseCount = 8 + gauntletWave * 2;
-      if (gauntletWave == 3) baseCount += 6; // Alien swarm
-      if (gauntletWave == 9) baseCount += 10; // Heavy push
+      baseCount = 10 + gauntletWave * 3;
+      if (gauntletWave == 3) baseCount += 8; // Alien swarm
+      if (gauntletWave >= 7) baseCount += 4;
+      if (gauntletWave == 9) baseCount += 12; // Heavy push
     }
 
     // Pick alien types
@@ -207,7 +219,9 @@ class EnemyWaveSystem extends Component with HasGameReference<SpaceEscaperGame> 
     waveActive = false;
 
     // Bonus reward
-    game.runCoins += 20 + wavesSpawned * 10;
+    if (game.coinsEnabled) {
+      game.runCoins += 20 + wavesSpawned * 10;
+    }
 
     game.showBanner = true;
     game.bannerTimer = 2.0;
@@ -218,7 +232,11 @@ class EnemyWaveSystem extends Component with HasGameReference<SpaceEscaperGame> 
         game.endRun();
       }
     } else {
-      game.bannerText = 'WAVE CLEARED! +${20 + wavesSpawned * 10} COINS';
+      if (game.coinsEnabled) {
+        game.bannerText = 'WAVE CLEARED! +${20 + wavesSpawned * 10} COINS';
+      } else {
+        game.bannerText = 'WAVE CLEARED!';
+      }
       game.bannerColor = const Color(0xFF22C55E);
     }
   }

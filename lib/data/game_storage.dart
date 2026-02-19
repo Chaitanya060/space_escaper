@@ -214,7 +214,6 @@ class GameStorage {
   static void debugGrantConsumables() {
     final c = ownedConsumables;
     if ((c['headStart'] ?? 0) < 5) c['headStart'] = 10;
-    if ((c['luckyClover'] ?? 0) < 5) c['luckyClover'] = 10;
     if ((c['shieldCharge'] ?? 0) < 5) c['shieldCharge'] = 10;
     if ((c['shieldDuration'] ?? 0) < 5) c['shieldDuration'] = 10;
     ownedConsumables = c;
@@ -582,8 +581,7 @@ class GameStorage {
   static bool isShipUnlocked(String shipId) => true; // TEMPORARY: Testing all ships unlocked
       // unlockedShips.contains(shipId);
 
-  static bool canAfford(int cost) => true; // TEMPORARY: Testing everything free
-      // totalCoins >= cost;
+  static bool canAfford(int cost) => totalCoins >= cost;
 
   static void resetProgress() {
     _prefs.clear();

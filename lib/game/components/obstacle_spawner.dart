@@ -225,7 +225,7 @@ class ObstacleComponent extends PositionComponent
     
     // 2. Photon Sphere (Thin bright ring at EH edge)
     final photonPaint = Paint()
-      ..color = Colors.white.withOpacity(0.9)
+      ..color = Colors.white.withValues(alpha: 0.9)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5);
@@ -272,7 +272,7 @@ class ObstacleComponent extends PositionComponent
     // Doppler effect: make approaching side (left) brighter/whiter
     // Overlaid bright spot on left
     final dopplerPaint = Paint()
-      ..color = Colors.white.withOpacity(0.4)
+      ..color = Colors.white.withValues(alpha: 0.4)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx - w * 0.25, cy + radius * 0.2), width: w * 0.3, height: h * 0.15),

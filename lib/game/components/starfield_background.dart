@@ -259,5 +259,116 @@ class StarfieldBackground extends Component
         ..color = star.color.withValues(alpha: star.baseAlpha * twinkle);
       canvas.drawCircle(Offset(star.x, star.y), star.starSize, paint);
     }
+
+    // Boss-specific background overlay
+    if (game.bossActive && game.currentBoss != null) {
+      _renderBossOverlay(canvas, w, h, game.currentBoss!.config.id);
+    }
+  }
+
+  void _renderBossOverlay(Canvas canvas, double w, double h, String bossId) {
+    switch (bossId) {
+      case 'solar_titan':
+        // Blinding white-yellow sky with enlarged sun
+        final solarGrad = Paint()
+          ..shader = RadialGradient(
+            center: Alignment.topCenter,
+            radius: 1.2,
+            colors: [
+              const Color(0xFFFFD700).withValues(alpha: 0.15),
+              const Color(0xFFFF8C00).withValues(alpha: 0.08),
+              Colors.transparent,
+            ],
+          ).createShader(Rect.fromLTWH(0, 0, w, h));
+        canvas.drawRect(Rect.fromLTWH(0, 0, w, h), solarGrad);
+        // Large sun circle behind boss area
+        final sunPaint = Paint()
+          ..color = const Color(0xFFFFD700).withValues(alpha: 0.08 + sin(time * 2) * 0.03)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30);
+        canvas.drawCircle(Offset(w / 2, 100), 80, sunPaint);
+        break;
+
+      case 'void_devourer':
+        // Pure black with purple nebula wisps
+        canvas.drawRect(Rect.fromLTWH(0, 0, w, h),
+          Paint()..color = Colors.black.withValues(alpha: 0.3));
+        for (int i = 0; i < 4; i++) {
+          final nx = w * (0.2 + i * 0.2) + sin(time * 0.5 + i) * 30;
+          final ny = h * (0.3 + i * 0.1) + cos(time * 0.3 + i) * 20;
+          final nebPaint = Paint()
+            ..color = const Color(0xFF8B5CF6).withValues(alpha: 0.06)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 40);
+          canvas.drawCircle(Offset(nx, ny), 60 + sin(time + i) * 10, nebPaint);
+        }
+        break;
+
+      case 'ai_dreadnought':
+        // Dark metallic grid lines with blinking red dots
+        final gridPaint = Paint()
+          ..color = const Color(0xFF374151).withValues(alpha: 0.08)
+          ..strokeWidth = 1;
+        for (double x = 0; x < w; x += 40) {
+          canvas.drawLine(Offset(x, 0), Offset(x, h), gridPaint);
+        }
+        for (double y = 0; y < h; y += 40) {
+          canvas.drawLine(Offset(0, y), Offset(w, y), gridPaint);
+        }
+        // Blinking red dots at intersections
+        if (((time * 1.5).floor() % 2) == 0) {
+          final dotPaint = Paint()
+            ..color = const Color(0xFFEF4444).withValues(alpha: 0.15)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+          for (double x = 40; x < w; x += 80) {
+            for (double y = 40; y < h; y += 80) {
+              canvas.drawCircle(Offset(x, y), 2, dotPaint);
+            }
+          }
+        }
+        break;
+
+      case 'thunder_leviathan':
+        // Stormy dark gradient with random lightning flashes
+        final stormGrad = Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              const Color(0xFF1F2937).withValues(alpha: 0.2),
+              const Color(0xFF111827).withValues(alpha: 0.1),
+              Colors.transparent,
+            ],
+          ).createShader(Rect.fromLTWH(0, 0, w, h));
+        canvas.drawRect(Rect.fromLTWH(0, 0, w, h), stormGrad);
+        // Random lightning flash
+        if (Random((time * 10).floor()).nextDouble() > 0.85) {
+          canvas.drawRect(Rect.fromLTWH(0, 0, w, h),
+            Paint()..color = const Color(0xFFFBBF24).withValues(alpha: 0.06));
+        }
+        break;
+
+      case 'cryo_colossus':
+        // Frozen blue-white gradient with snow particles
+        final iceGrad = Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              const Color(0xFF06B6D4).withValues(alpha: 0.08),
+              const Color(0xFF67E8F9).withValues(alpha: 0.04),
+              Colors.transparent,
+            ],
+          ).createShader(Rect.fromLTWH(0, 0, w, h));
+        canvas.drawRect(Rect.fromLTWH(0, 0, w, h), iceGrad);
+        // Horizontal snow/wind particles
+        final snowPaint = Paint()
+          ..color = Colors.white.withValues(alpha: 0.15)
+          ..strokeWidth = 1.5;
+        for (int i = 0; i < 15; i++) {
+          final sx = (time * 60 + i * 37) % w;
+          final sy = (i * 53.7) % h;
+          canvas.drawLine(Offset(sx, sy), Offset(sx + 8, sy - 2), snowPaint);
+        }
+        break;
+    }
   }
 }

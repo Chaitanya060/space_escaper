@@ -125,6 +125,7 @@ class PowerUpSpawner extends Component with HasGameReference<SpaceEscaperGame> {
     // Weighted random selection
     double totalWeight = 0;
     for (final p in allPowerUps) {
+      if (!game.coinsEnabled && p.type == PowerUpType.coinStorm) continue;
       totalWeight += p.spawnWeight;
     }
 
@@ -132,6 +133,7 @@ class PowerUpSpawner extends Component with HasGameReference<SpaceEscaperGame> {
     PowerUpType selected = PowerUpType.shield;
 
     for (final p in allPowerUps) {
+      if (!game.coinsEnabled && p.type == PowerUpType.coinStorm) continue;
       roll -= p.spawnWeight;
       if (roll <= 0) {
         selected = p.type;

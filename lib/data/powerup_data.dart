@@ -130,8 +130,8 @@ PowerUpInfo getPowerUpInfo(PowerUpType type) {
 
 enum ConsumableType {
   headStart,
-  luckyClover,
   shieldCharge,
+  damageCore,
   xpBooster,
 }
 
@@ -165,20 +165,20 @@ const List<ConsumableInfo> allConsumables = [
     color: Color(0xFF3B82F6),
   ),
   ConsumableInfo(
-    type: ConsumableType.luckyClover,
-    name: 'Lucky Clover',
-    description: '+20% coin spawn rate',
-    coinCost: 150,
-    icon: Icons.eco,
-    color: Color(0xFF22C55E),
-  ),
-  ConsumableInfo(
     type: ConsumableType.shieldCharge,
     name: 'Shield Charge',
     description: 'Start with shield protection',
     coinCost: 250,
     icon: Icons.shield,
     color: Color(0xFF8B5CF6),
+  ),
+  ConsumableInfo(
+    type: ConsumableType.damageCore,
+    name: 'Damage Core',
+    description: 'Start with Damage Boost',
+    coinCost: 200,
+    icon: Icons.local_fire_department,
+    color: Color(0xFFEF4444),
   ),
   ConsumableInfo(
     type: ConsumableType.xpBooster,

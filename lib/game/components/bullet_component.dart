@@ -36,25 +36,45 @@ class BulletComponent extends PositionComponent
   int penetrationCount;
 
   // Homing
-  AlienComponent? _target;
+  PositionComponent? _target;
   double _homingTurnRate;
 
   // Wave
   double _timeAlive = 0;
   final double _waveAmplitude = 3.0;
   final double _waveFrequency = 10.0;
-  late Vector2 _initialVelocityDir;
+  // Resonance stacks could be tracked on the enemy, but for now simple damage.
 
   // Ricochet
   int _bouncesLeft = 3;
 
   // Black Hole
   double _blackHoleDuration = 4.0;
-  double _pullRadius = 150.0;
+  final double _pullRadius = 150.0;
 
   // Mine
   bool _mineArmed = false;
   double _mineArmTimer = 0.5;
+  final double proximityRadius;
+
+  // New Fields
+  final double freezeDuration;
+  final double slowAmount;
+  
+  // Chain Lightning
+  int chainCount;
+  final double _chainRange = 300.0;
+  final List<PositionComponent> _hitTargets = [];
+
+  // Explosion
+  final double blastRadius;
+  final bool isNuclear;
+
+  // Crystal
+  final int shardCount;
+  
+  // Black Hole
+  bool destroyProjectiles = false;
 
   BulletComponent({
     required Vector2 position,
@@ -66,6 +86,14 @@ class BulletComponent extends PositionComponent
     this.damage = 1,
     this.penetrationCount = 0,
     double homingTurnRate = 5.0,
+    this.freezeDuration = 0,
+    this.slowAmount = 0,
+    this.chainCount = 0,
+    this.blastRadius = 0,
+    this.isNuclear = false,
+    this.shardCount = 0,
+    this.proximityRadius = 0,
+    this.destroyProjectiles = false,
   })  : bulletSpeed = speed,
         bulletColor = color,
         velocity = velocity ?? Vector2(0, -speed),
@@ -75,9 +103,6 @@ class BulletComponent extends PositionComponent
           size: size ?? Vector2(4, 16),
           anchor: Anchor.center,
         ) {
-      if (type == BulletType.wave) {
-        _initialVelocityDir = (this.velocity).normalized();
-      }
     }
 
   @override
@@ -164,18 +189,18 @@ class BulletComponent extends PositionComponent
   }
 
   void _updateHoming(double dt) {
-    if (_target == null || !_target!.isMounted || _target!.health <= 0) {
-      // Find new target
-      double minDist = 400;
-      for (final child in game.children) {
-        if (child is AlienComponent && child.y > 0 && child.y < game.size.y) {
-          final dist = child.position.distanceTo(position);
-          if (dist < minDist) {
-            minDist = dist;
-            _target = child;
-          }
-        }
+    bool needNewTarget = _target == null || !_target!.isMounted;
+    if (!needNewTarget) {
+      if (_target is AlienComponent && (_target as AlienComponent).health <= 0) {
+        needNewTarget = true;
+      } else if (_target is BossComponent && (_target as BossComponent).health <= 0) {
+        needNewTarget = true;
       }
+    }
+
+    if (needNewTarget) {
+      _target = null;
+      _findTarget();
     }
 
     if (_target != null) {
@@ -185,6 +210,27 @@ class BulletComponent extends PositionComponent
       velocity.setFrom(smoothDir * bulletSpeed);
       angle = atan2(velocity.x, -velocity.y);
     }
+  }
+
+  void _findTarget() {
+      // Find new target (prefer boss if present)
+      double minDist = 600; // Increased range
+      for (final child in game.children) {
+        if (child is BossComponent && child.health > 0) {
+          final dist = child.position.distanceTo(position);
+          if (dist < minDist) {
+            minDist = dist;
+            _target = child;
+          }
+        }
+        if (child is AlienComponent && child.y > 0 && child.y < game.size.y && child.health > 0) {
+          final dist = child.position.distanceTo(position);
+          if (dist < minDist && !_hitTargets.contains(child)) {
+            minDist = dist;
+            _target = child;
+          }
+        }
+      }
   }
 
   void _updateBlackHole(double dt) {
@@ -202,6 +248,23 @@ class BulletComponent extends PositionComponent
       }
     });
 
+    // Pull and damage bosses
+    for (final boss in game.children.whereType<BossComponent>()) {
+      final dist = boss.position.distanceTo(position);
+      if (dist < _pullRadius) {
+        final dir = (position - boss.position).normalized();
+        boss.position += dir * 40 * dt;
+        final tick = (damage * dt * 0.6).round();
+        if (tick > 0) boss.takeDamage(tick);
+      }
+    }
+
+    // Destroy projectiles if enabled
+    /* if (destroyProjectiles) {
+       // Need EnemyBulletComponent to exist, generic removal for now not possible easily without checking types
+       // Assuming we add EnemyBulletComponent logic later or generic PositionComponent check
+    } */
+
     if (_blackHoleDuration <= 0) removeFromParent();
   }
 
@@ -211,6 +274,27 @@ class BulletComponent extends PositionComponent
           if (_mineArmTimer <= 0) _mineArmed = true;
       }
       position.y += 50 * dt; // Drift down slowly
+      
+      // Proximity Trigger
+      if (_mineArmed) {
+          double triggerRange = proximityRadius > 0 ? proximityRadius : 60.0;
+           for(final child in game.children) {
+               if (child is AlienComponent && !child.isRemoving) {
+                   if (child.position.distanceTo(position) < triggerRange) {
+                       _explode(position);
+                       removeFromParent();
+                       return;
+                   }
+               } else if (child is BossComponent) {
+                   if (child.position.distanceTo(position) < triggerRange) {
+                       _explode(position);
+                       removeFromParent();
+                       return;
+                   }
+               }
+           }
+      }
+
       if (position.y > game.size.y + 50) removeFromParent();
   }
 
@@ -257,11 +341,16 @@ class BulletComponent extends PositionComponent
       
       // Apply effects
       if (type == BulletType.frost) {
-          // Slow effect logic (would need support in AlienComponent)
-          // other.applySlow(0.4, 3.0); 
+          if (slowAmount > 0) other.applySlow(1.0 - slowAmount, freezeDuration > 0 ? 0.5 : 2.0);
+          if (freezeDuration > 0) other.freeze(freezeDuration);
       }
       
       other.takeDamage(finalDamage.toDouble());
+
+      // Chain Lightning Logic
+      if (type == BulletType.lightning && chainCount > 0) {
+          _handleChainLightning(other);
+      }
     }
     else if (other is BossComponent) {
       hit = true;
@@ -288,7 +377,9 @@ class BulletComponent extends PositionComponent
         if (type != BulletType.piercing && 
             type != BulletType.spectral && 
             type != BulletType.blade && 
-            type != BulletType.flame) {
+            type != BulletType.flame &&
+            type != BulletType.lightning && // Lightning usually doesn't stick
+            type != BulletType.wave) {
           
           if (penetrationCount > 0) {
             penetrationCount--;
@@ -300,22 +391,78 @@ class BulletComponent extends PositionComponent
   }
 
   void _explode(Vector2 center) {
+    double radius = blastRadius > 0 ? blastRadius : 120;
+    
+    // Nuclear visual
+    if (isNuclear) {
+        radius = 500; // Screen wipe
+        // game.triggerNukeEffect(); // If we had one
+    }
+
     game.children.whereType<AlienComponent>().forEach((alien) {
-        if (alien.position.distanceTo(center) < 120) {
-            alien.takeDamage(5.0);
+        final dist = alien.position.distanceTo(center);
+        if (dist < radius) {
+            double splashDmg = damage * 0.5;
+            if (isNuclear) splashDmg = damage * 2.0;
+            alien.takeDamage(splashDmg);
+            // EMP effect?
         }
     });
+
+    for (final boss in game.children.whereType<BossComponent>()) {
+      final dist = boss.position.distanceTo(center);
+      if (dist < radius) {
+        double splashDmg = damage * 0.3;
+        if (isNuclear) splashDmg = damage.toDouble();
+        boss.takeDamage(splashDmg.round());
+      }
+    }
+  }
+
+  void _handleChainLightning(PositionComponent currentTarget) {
+      _hitTargets.add(currentTarget);
+      chainCount--;
+      
+      PositionComponent? nextTarget;
+      double minDist = _chainRange;
+
+      for (final child in game.children) {
+          if (child is AlienComponent && !_hitTargets.contains(child) && child.health > 0) {
+              final dist = child.position.distanceTo(currentTarget.position);
+              if (dist < minDist) {
+                  minDist = dist;
+                  nextTarget = child;
+              }
+          }
+      }
+
+      if (nextTarget != null) {
+          // Spawn new lightning segment
+          game.add(BulletComponent(
+              position: currentTarget.position,
+              velocity: (nextTarget.position - currentTarget.position).normalized() * bulletSpeed,
+              type: BulletType.lightning,
+              damage: damage, // Maybe degrade damage?
+              chainCount: chainCount,
+              color: bulletColor,
+              size: size,
+          ));
+      }
   }
 
   void _shatter(Vector2 center) {
+      if (shardCount <= 0) return;
+      
       // Create smaller shards
-      for (int i=0; i<6; i++) {
-          double angle = i * (2*pi/6);
+      int count = shardCount > 0 ? shardCount : 4; 
+      
+      for (int i=0; i<count; i++) {
+          double angle = i * (2*pi/count);
           game.add(BulletComponent(
               position: center,
               velocity: Vector2(cos(angle), sin(angle)) * 600,
               type: BulletType.standard,
-              damage: 1,
+              damage: (damage * 0.5).ceil(), 
               size: Vector2(4, 8),
               color: Colors.cyanAccent,
           ));

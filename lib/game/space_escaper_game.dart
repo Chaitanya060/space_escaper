@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
@@ -42,11 +41,12 @@ class SpaceEscaperGame extends FlameGame
   bool obstaclesEnabled = true;
   bool coinsEnabled = true;
   bool bossesEnabled = true;
-  int bossRushTarget = 5;
+  int bossRushTarget = 30;
   int bossRushDefeated = 0;
   bool disableSecondWind = false;
   double obstacleDensityMultiplier = 1.0;
   double bossRushIntermission = 0.0;
+  @override
   bool isLoaded = false;
   final String? overrideShipId; // For Test Drive
 
@@ -99,6 +99,7 @@ class SpaceEscaperGame extends FlameGame
 
   // Milestones
   final Set<int> reachedMilestones = {};
+  int _hellPulseLevel = 0;
   String? milestoneAlert;
   double milestoneAlertTimer = 0;
   final Set<String> unlockedObstacles = {'asteroid', 'debris', 'barrier'};
@@ -112,7 +113,6 @@ class SpaceEscaperGame extends FlameGame
 
   // Consumables for this run
   bool headStartActive = false;
-  bool luckyCloverActive = false;
   bool shieldChargeActive = false;
   bool xpBoosterActive = false;
 
@@ -138,6 +138,10 @@ class SpaceEscaperGame extends FlameGame
   int scalingKills = 0;           // Infinity Colossus: damage per 100 kills
   int solarSurgeStacks = 0;       // Stellar Colossus: stacking damage
 
+  // Time Rewind History
+  final List<Vector2> _positionHistory = [];
+  double _historyTimer = 0;
+  
   // Callbacks
   VoidCallback? onGameOver;
   VoidCallback? onPauseRequest;
@@ -176,13 +180,17 @@ class SpaceEscaperGame extends FlameGame
       obstacleDensityMultiplier = 5.0;
       baseSpeed *= 0.8;
       disableSecondWind = true;
+      coinsEnabled = false;
+      bossesEnabled = false;
     } else if (gameMode == GameMode.bossRush) {
       obstaclesEnabled = false;
-      coinsEnabled = true;
+      coinsEnabled = false;
       bossesEnabled = true;
+      bossRushTarget = min(30, allBosses.length);
     } else if (gameMode == GameMode.gauntlet) {
       // Uses existing systems, special waves later
       bossesEnabled = true;
+      coinsEnabled = false;
     }
 
     // Legacy auto-consume removed.
@@ -226,7 +234,9 @@ class SpaceEscaperGame extends FlameGame
     add(shipTrail);
 
     // Satellites & Shield Circles
-    _setupSatellites();
+    if (gameMode != GameMode.bossRush) {
+      _setupSatellites();
+    }
 
     // Screen effects
     screenEffects = ScreenEffects();
@@ -255,11 +265,6 @@ class SpaceEscaperGame extends FlameGame
       activePowerUps[PowerUpType.invincibility] = 5.0;
     }
 
-    // LUCKY CLOVER: +20% more coins throughout the run
-    if (consumables.contains('luckyClover')) {
-      luckyCloverActive = true;
-    }
-
     // SHIELD CHARGE: Start with an active shield (not in Survival Hell)
     if (consumables.contains('shieldCharge')) {
       if (gameMode != GameMode.survivalHell) {
@@ -272,11 +277,18 @@ class SpaceEscaperGame extends FlameGame
       xpBoosterActive = true;
     }
 
+    // DAMAGE CORE: Start with damage boost
+    if (consumables.contains('damageCore')) {
+      final info = getPowerUpInfo(PowerUpType.damageBoost);
+      activePowerUps[PowerUpType.damageBoost] = info.duration;
+    }
+
     isLoaded = true;
 
     if (gameMode == GameMode.bossRush) {
-      final first = getBossForDistance(0, bossesDefeatedThisRun);
-      if (first != null) _spawnBoss(first);
+      if (allBosses.isNotEmpty) {
+        _spawnBoss(allBosses.first);
+      }
     }
   }
 
@@ -320,6 +332,19 @@ class SpaceEscaperGame extends FlameGame
     timeSurvived += dt;
     distance += currentSpeed * dt;
 
+    if (gameMode == GameMode.survivalHell) {
+      final level = (distance / 2500).floor();
+      if (level > _hellPulseLevel) {
+        _hellPulseLevel = level;
+        screenEffects.triggerModePulse(const Color(0xFFEF4444));
+        screenEffects.triggerFlash(color: Colors.red.withValues(alpha: 0.35), duration: 0.18);
+        showBanner = true;
+        bannerTimer = 1.2;
+        bannerText = 'HELL INTENSIFIES!';
+        bannerColor = const Color(0xFFEF4444);
+      }
+    }
+
     final totalXpFromDistance = XpGain.fromDistance(distance);
     final deltaXp = totalXpFromDistance - _xpGrantedFromDistance;
     if (deltaXp > 0) {
@@ -336,20 +361,28 @@ class SpaceEscaperGame extends FlameGame
     if (gameMode == GameMode.bossRush && bossRushIntermission > 0) {
       bossRushIntermission -= dt;
       if (bossRushIntermission <= 0 && !bossActive) {
-        final next = allBosses.firstWhere(
-          (b) => !bossesDefeatedThisRun.contains(b.id),
-          orElse: () => allBosses.first,
-        );
-        _spawnBoss(next);
+        final remaining = allBosses.where((b) => !bossesDefeatedThisRun.contains(b.id)).toList();
+        if (remaining.isEmpty) {
+          _endRun();
+        } else {
+          _spawnBoss(remaining.first);
+        }
       }
     }
 
     // Speed curve
-    final earlyFactor = (distance / 800).clamp(0.0, 10.0);
-    speedMultiplier = 1 + earlyFactor * 0.06;
-    if (distance > 4000) {
-      final lateFactor = ((distance - 4000) / 2000).clamp(0.0, 8.0);
-      speedMultiplier += lateFactor * 0.04;
+    if (gameMode == GameMode.survivalHell) {
+       speedMultiplier = 1.0 + (distance / 5200).clamp(0.0, 2.2);
+    } else if (gameMode == GameMode.gauntlet) {
+       speedMultiplier = 1.0 + (distance / 2600).clamp(0.0, 4.2);
+    } else {
+       // Standard / Hardcore
+       final earlyFactor = (distance / 800).clamp(0.0, 10.0);
+       speedMultiplier = 1 + earlyFactor * 0.06;
+       if (distance > 4000) {
+         final lateFactor = ((distance - 4000) / 2000).clamp(0.0, 8.0);
+         speedMultiplier += lateFactor * 0.04;
+       }
     }
     currentSpeed = baseSpeed * speedMultiplier;
 
@@ -366,9 +399,21 @@ class SpaceEscaperGame extends FlameGame
     }
 
     // Obstacle density
-    final densityFactor = (distance / 1200).clamp(0.0, 12.0);
-    obstacleMultiplier = 1 + densityFactor * 0.06;
-    obstacleMultiplier *= obstacleDensityMultiplier;
+    // Obstacle density
+    if (gameMode == GameMode.survivalHell) {
+       double hellBonus = (distance / 2600) * 0.45;
+       obstacleDensityMultiplier = (2.4 + hellBonus).clamp(2.4, 5.4);
+       obstacleMultiplier = obstacleDensityMultiplier;
+    } else if (gameMode == GameMode.gauntlet) {
+       // Gauntlet: Starts normal, gets harder
+       final densityFactor = (distance / 1000).clamp(0.0, 10.0);
+       obstacleMultiplier = 1 + densityFactor * 0.18; // Faster ramp up than normal
+    } else {
+       // Normal
+       final densityFactor = (distance / 1200).clamp(0.0, 12.0);
+       obstacleMultiplier = 1 + densityFactor * 0.06;
+       obstacleMultiplier *= obstacleDensityMultiplier;
+    }
 
     // Fire cooldown & Auto-fire check (if not manual)
     if (fireCooldownTimer > 0) {
@@ -407,7 +452,14 @@ class SpaceEscaperGame extends FlameGame
     _checkBossSpawn();
 
     // Physics mode handling
-    _updatePhysics(dt);
+    if (gameMode != GameMode.bossRush) {
+      _updatePhysics(dt);
+    } else {
+      currentPhysicsMode = 'normal';
+      pendingPhysicsMode = null;
+      physicsWarning = false;
+      warningTimer = 0;
+    }
 
     // Banner
     if (showBanner) {
@@ -448,6 +500,18 @@ class SpaceEscaperGame extends FlameGame
 
     // Evolution check
     _checkEvolution();
+
+    // Time Rewind History (Chrono Destroyer)
+    if (currentShip.id == 'chrono_destroyer') {
+       _historyTimer += dt;
+       if (_historyTimer >= 0.1) {
+          _historyTimer = 0;
+          _positionHistory.add(player.position.clone());
+          if (_positionHistory.length > 50) { // Keep last 5s
+             _positionHistory.removeAt(0);
+          }
+       }
+    }
   }
 
   // ═══════════════════════════════════════
@@ -643,9 +707,13 @@ class SpaceEscaperGame extends FlameGame
         break;
 
       case ActiveAbilityType.timeRewind:
-        // Chrono Destroyer: restore health / undo 2s damage
+        // Chrono Destroyer: restore position and grant invincibility
+        if (_positionHistory.length > 20) {
+            final targetIdx = max(0, _positionHistory.length - 20);
+            player.position = _positionHistory[targetIdx].clone();
+        }
         player.makeInvincible();
-        player.invincibleTimer = 2.0;
+        player.invincibleTimer = 3.0; // Slightly longer for escape
         screenEffects.triggerFlash(color: const Color(0xFF00BFA5).withValues(alpha: 0.5));
         break;
 
@@ -929,6 +997,9 @@ double getDamageMultiplier() {
     if (gameMode == GameMode.survivalHell && type == PowerUpType.shield) {
       return;
     }
+    if (!coinsEnabled && type == PowerUpType.coinStorm) {
+      return;
+    }
     final info = getPowerUpInfo(type);
     double duration = info.duration;
 
@@ -954,6 +1025,7 @@ double getDamageMultiplier() {
         // Shield is consumed on next hit; no immediate invincibility here
         break;
       case PowerUpType.coinStorm:
+        if (!coinsEnabled) break;
         for (int i = 0; i < 20; i++) {
           final x = 40 + Random().nextDouble() * (size.x - 80);
           coinSpawner.gameRef.add(CoinComponent(
@@ -1040,15 +1112,12 @@ double getDamageMultiplier() {
     bannerColor = config.color;
   }
 
+
   void onBossDefeated(String bossId) {
     bossActive = false;
     currentBoss = null;
     bossesKilledThisRun++;
     bossesDefeatedThisRun.add(bossId);
-
-    final config = getBossById(bossId);
-    final reward = config?.rewardCoins ?? 100;
-    runCoins += reward;
 
     GameStorage.addDefeatedBoss(bossId);
 
@@ -1056,8 +1125,10 @@ double getDamageMultiplier() {
     screenEffects.triggerComboGlow();
     showBanner = true;
     bannerTimer = 3.0;
-    bannerText = 'BOSS DEFEATED! +$reward COINS';
-    bannerColor = const Color(0xFFFFD700);
+    bannerText = 'BOSS DEFEATED!';
+    bannerColor = const Color(0xFF22C55E);
+
+    // Boss defeats should not grant/drop coins (coins come from normal gameplay only).
 
     if (gameMode == GameMode.bossRush) {
       bossRushDefeated++;
@@ -1065,12 +1136,50 @@ double getDamageMultiplier() {
         _endRun();
       } else {
         bossRushIntermission = 2.0;
-        // Intermission coin burst
-        final rng = Random();
-        for (int i = 0; i < 15; i++) {
-          final x = 40 + rng.nextDouble() * (size.x - 80);
-          add(CoinComponent(position: Vector2(x, -20 - i * 10), value: rng.nextDouble() < 0.2 ? 5 : 1));
-        }
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════
+  //  WEAPON UPGRADES
+  // ═══════════════════════════════════════
+
+  int lastWeaponLevel = 1;
+
+  WeaponLevelData getWeaponLevel() {
+    if (currentShip.weaponLevels.isEmpty) {
+      return const WeaponLevelData(level: 1, name: 'Basic', shots: 1, damage: 1, distanceThreshold: 0);
+    }
+    
+    WeaponLevelData current = currentShip.weaponLevels.first;
+    for (final levelData in currentShip.weaponLevels) {
+      if (distance >= levelData.distanceThreshold) {
+        current = levelData;
+      } else {
+        break;
+      }
+    }
+    return current;
+  }
+
+  void _checkWeaponLevelUp() {
+    final currentData = getWeaponLevel();
+    if (currentData.level > lastWeaponLevel) {
+      lastWeaponLevel = currentData.level;
+      
+      // Upgrade Banner
+      showBanner = true;
+      bannerTimer = 3.0;
+      bannerText = 'WEAPON UPGRADE: ${currentData.name.toUpperCase()}!';
+      bannerColor = currentShip.color;
+      
+      screenEffects.triggerFlash(color: currentShip.color.withValues(alpha: 0.3));
+      screenEffects.triggerModePulse(currentShip.color);
+      
+      // Bonus notification for special effects
+      if (currentData.specialBonus.isNotEmpty) {
+        // We could queue another banner or just let the player discover it
+        // For now, simple sound or flash is enough
       }
     }
   }
@@ -1098,7 +1207,6 @@ double getDamageMultiplier() {
     fireCooldownTimer *= getFireRateMultiplier();
 
     final origin = player.position.clone()..y -= 30;
-    final damaged = hasPowerUp(PowerUpType.damageBoost);
     
     // Skill tree: bullet speed bonus
     final bsLevel = GameStorage.getSkillLevel('bullet_speed', shipId: currentShip.id);
@@ -1108,176 +1216,291 @@ double getDamageMultiplier() {
     final pierceLevel = GameStorage.getSkillLevel('bullet_damage', shipId: currentShip.id);
 
     // Helper to spawn bullets
-    void spawn(Vector2 offset, double angle, {BulletType type = BulletType.standard, int dmg = 1, double speedMult = 1.0, double turnRate = 5.0, Vector2? size}) {
-      final vel = Vector2(sin(angle), -cos(angle)) * (800 * speedBonus * speedMult);
+    void spawn(Vector2 offset, double angle, {
+        BulletType type = BulletType.standard, 
+        int dmg = 1, 
+        double speedMult = 1.0, 
+        double turnRate = 5.0, 
+        Vector2? size,
+        double freezeDur = 0,
+        double slowAmt = 0,
+        int chain = 0,
+        double blast = 0,
+        bool nuclear = false,
+        int shards = 0,
+        double proxRadius = 0,
+        bool destroyProj = false,
+    }) {
+      // When boss is active, aim toward the boss instead of always upward
+      Vector2 baseDir;
+      if (bossActive && currentBoss != null) {
+        baseDir = (currentBoss!.position - origin).normalized();
+        final rotated = Vector2(
+          baseDir.x * cos(angle) - baseDir.y * sin(angle),
+          baseDir.x * sin(angle) + baseDir.y * cos(angle),
+        );
+        baseDir = rotated;
+      } else {
+        baseDir = Vector2(sin(angle), -cos(angle));
+      }
+      final vel = baseDir * (800 * speedBonus * speedMult);
       add(BulletComponent(
         position: origin + offset,
         velocity: vel,
         type: type,
         damage: dmg,
-        penetrationCount: pierceLevel, // Pass penetration count
-        color: currentShip.glowColor.withOpacity(1.0),
+        penetrationCount: pierceLevel,
+        color: currentShip.glowColor.withValues(alpha: 1.0),
         size: size ?? (type == BulletType.blackHole ? Vector2(40, 40) : Vector2(6, 18)),
         homingTurnRate: turnRate,
+        freezeDuration: freezeDur,
+        slowAmount: slowAmt,
+        chainCount: chain,
+        blastRadius: blast,
+        isNuclear: nuclear,
+        shardCount: shards,
+        proximityRadius: proxRadius,
+        destroyProjectiles: destroyProj,
       ));
     }
 
     // Logic for each WeaponType
+    final levelData = getWeaponLevel();
+
     switch (currentShip.weaponType) {
       
-      // 1. Nova Scout (Single Bullet) — with distance-based upgrades
+      // 1. Nova Scout (Single Bullet)
       case WeaponType.singleBullet:
-        spawn(Vector2(0, 0), 0);
-        if (distance >= 40000) {
-          // Triple shot
-          spawn(Vector2(-12, 0), -0.1);
-          spawn(Vector2(12, 0), 0.1);
-        } else if (distance >= 25000) {
-          // Double shot
-          spawn(Vector2(10, 0), 0);
+        final count = levelData.shots;
+        final isPiercing = levelData.level >= 2;
+        
+        for (int i = 0; i < count; i++) {
+            double angleOffset = 0;
+            if (count > 1) {
+                angleOffset = (i - (count - 1) / 2) * 0.1;
+            }
+            spawn(Vector2(angleOffset * 50, 0), angleOffset, type: isPiercing ? BulletType.piercing : BulletType.standard, dmg: levelData.damage, speedMult: 1.0 + (levelData.level * 0.1));
         }
-        if (damaged) spawn(Vector2(15, 0), 0.05);
         break;
 
-      // 2. Storm Chaser (Pulse Charger - Burst)
+      // 2. Storm Chaser
       case WeaponType.pulseCharge:
-        // Simulating charge by firing 5 tight bullets
-        for(int i=-2; i<=2; i++) {
-           spawn(Vector2(i*4.0, 0), i*0.05, type: BulletType.standard, dmg: 2);
+        final count = levelData.shots;
+        final isExplosive = levelData.level >= 5;
+        for(int i=0; i<count; i++) {
+           double angleOffset = (i - (count-1)/2) * 0.05;
+           spawn(Vector2(angleOffset * 40, 0), angleOffset, type: isExplosive ? BulletType.explosive : BulletType.standard, dmg: levelData.damage);
         }
         break;
 
-      // 3. Comet Striker (Ricochet)
+      // 3. Comet Striker
       case WeaponType.ricochet:
-        spawn(Vector2(0, 0), 0.2, type: BulletType.ricochet, dmg: 2); // Angled start
-        if (damaged) spawn(Vector2(0, 0), -0.2, type: BulletType.ricochet, dmg: 2);
+        final count = levelData.shots;
+        for(int i=0; i<count; i++) {
+            double angle = 0.2 * (i % 2 == 0 ? 1 : -1) * (1 + i~/2);
+            spawn(Vector2(0, 0), angle, type: BulletType.ricochet, dmg: levelData.damage, speedMult: 1.2);
+        }
         break;
 
-      // 4. Meteor Dash (Shotgun)
+      // 4. Meteor Dash
       case WeaponType.shotgun:
-        for(int i=-3; i<=3; i++) {
-            if (i==0) continue;
-            spawn(Vector2(i*2.0, 0), i*0.15, type: BulletType.standard, speedMult: 0.8 + Random().nextDouble()*0.4);
+        int pellets = levelData.shots;
+        double spreadAngle = levelData.level >= 5 ? pi * 2 : 0.5;
+        for(int i=0; i<pellets; i++) {
+            double angle = (levelData.level >= 5) ? (i / pellets) * pi * 2 : (Random().nextDouble() - 0.5) * spreadAngle;
+            spawn(Vector2(0, 0), angle, type: BulletType.standard, speedMult: 0.8 + Random().nextDouble()*0.4, dmg: levelData.damage, size: Vector2(6, 6));
         }
+        break;
+
+       // 7. Stellar Phantom (Gatling)
+       case WeaponType.gatling:
+        final isPhasing = levelData.level >= 5;
+        spawn(Vector2(Random().nextDouble()*10 - 5, 0), 0, speedMult: 1.2 + (levelData.level * 0.1), type: isPhasing ? BulletType.piercing : BulletType.standard, dmg: levelData.damage);
         break;
 
       // 5. Aurora Wing (Frost Beam)
       case WeaponType.frostBeam:
-        spawn(Vector2(0, 0), 0, type: BulletType.frost, speedMult: 1.5, dmg: 1);
-        if (damaged) spawn(Vector2(5, 0), 0, type: BulletType.frost, speedMult: 1.5);
+        final count = levelData.shots;
+        final freezeTime = (levelData.level >= 3) ? 1.5 : 0.5;
+        final slow = (levelData.level >= 2) ? 0.5 : 0.2;
+        for(int i=0; i<count; i++) {
+             double angle = (i - (count-1)/2) * 0.05;
+             spawn(Vector2(angle*20, 0), angle, type: BulletType.frost, dmg: levelData.damage, freezeDur: freezeTime, slowAmt: slow);
+        }
         break;
 
       // 6. Nebula Spark (Seeker Darts)
       case WeaponType.seekerDarts:
-        spawn(Vector2(-10, 0), -0.5, type: BulletType.homing, turnRate: 8.0, dmg: 1);
-        spawn(Vector2(0, 0), 0, type: BulletType.homing, turnRate: 8.0, dmg: 1);
-        spawn(Vector2(10, 0), 0.5, type: BulletType.homing, turnRate: 8.0, dmg: 1);
-        break;
-
-      // 7. Stellar Phantom (Gatling)
-      case WeaponType.gatling:
-        spawn(Vector2(Random().nextDouble()*10 - 5, 0), 0, speedMult: 1.2);
-        if (damaged) spawn(Vector2(Random().nextDouble()*10 - 5, 0), 0);
+        final count = levelData.shots;
+        for(int i=0; i<count; i++) {
+            double angle = (i - (count-1)/2) * 0.2;
+            spawn(Vector2(angle*30, 0), angle, type: BulletType.homing, turnRate: 8.0, dmg: levelData.damage);
+        }
         break;
 
       // 8. Quantum Racer (Wave Beam)
       case WeaponType.waveBeam:
-        spawn(Vector2(-5, 0), 0, type: BulletType.wave, dmg: 2);
-        spawn(Vector2(5, 0), 0, type: BulletType.wave, dmg: 2);
+        final count = levelData.shots;
+        for(int i=0; i<count; i++) {
+            double angle = (i - (count-1)/2) * 0.1;
+            spawn(Vector2(angle*20, 0), angle, type: BulletType.wave, dmg: levelData.damage);
+        }
         break;
 
       // 9. Nebula Cruiser (Rockets)
       case WeaponType.explosiveRockets:
-        spawn(Vector2(0, 0), 0, type: BulletType.explosive, speedMult: 0.6, dmg: 5);
-        if (damaged) spawn(Vector2(15, 0), 0, type: BulletType.explosive, speedMult: 0.6, dmg: 5);
+        final count = levelData.shots;
+        final isNuke = levelData.level >= 5;
+        for(int i=0; i<count; i++) {
+            double angle = (i - (count-1)/2) * 0.15;
+            spawn(Vector2(angle*40, 0), angle, type: BulletType.explosive, speedMult: 0.6, dmg: levelData.damage, blast: 120.0 + (levelData.level * 20), nuclear: isNuke);
+        }
         break;
 
-      // 10. Cosmic Viper (Chain Lightning) -> simulating with fast spectral/tracking
+      // 10. Cosmic Viper (Chain Lightning)
       case WeaponType.chainLightning:
-         spawn(Vector2(0, 0), 0, type: BulletType.lightning, speedMult: 2.0, dmg: 3);
+         final count = levelData.shots;
+         int chains = 2 + (levelData.level * 2);
+         if (levelData.level >= 5) chains = 100; // Infinite
+         for(int i=0; i<count; i++) {
+             spawn(Vector2(0, 0), i*0.1, type: BulletType.lightning, speedMult: 2.0, dmg: levelData.damage, chain: chains);
+         }
          break;
 
       // 11. Galaxy Titan (Temporal Laser)
       case WeaponType.temporalLaser:
-         spawn(Vector2(0, 0), 0, type: BulletType.timeShatter, speedMult: 1.2, dmg: 3);
+         final count = levelData.shots;
+         for(int i=0; i<count; i++) {
+             spawn(Vector2((i - count/2)*10, 0), 0, type: BulletType.timeShatter, speedMult: 1.2, dmg: levelData.damage);
+         }
          break;
 
       // 12. Void Reaper (Dimensional Blades)
       case WeaponType.dimensionalBlades:
-         spawn(Vector2(-10, 0), -0.2, type: BulletType.blade, speedMult: 0.8, dmg: 4);
-         spawn(Vector2(10, 0), 0.2, type: BulletType.blade, speedMult: 0.8, dmg: 4);
+         final count = levelData.shots;
+         for(int i=0; i<count; i++) {
+             double angle = (i % 2 == 0 ? 1 : -1) * 0.2 + (i*0.05);
+             spawn(Vector2(i*10.0, 0), angle, type: BulletType.blade, speedMult: 0.8, dmg: levelData.damage);
+         }
          break;
 
       // 13. Star Forge (Drone Swarm)
       case WeaponType.droneSwarm:
-         // Drones (satellites) are separate, but ship also fires
-         spawn(Vector2(0, 0), 0, dmg: 2);
+         spawn(Vector2(0, 0), 0, dmg: levelData.damage);
          break;
 
       // 14. Diamond Emperor (Crystal Shatter)
       case WeaponType.crystalShatter:
-         spawn(Vector2(0, 0), 0, type: BulletType.crystal, dmg: 5);
+         final count = levelData.shots;
+         int shards = levelData.level >= 5 ? 20 : 4;
+         for(int i=0; i<count; i++) {
+             spawn(Vector2(0, 0), (i - count/2)*0.1, type: BulletType.crystal, dmg: levelData.damage, shards: shards);
+         }
          break;
 
       // 15. Plasma Phoenix (Inferno)
       case WeaponType.infernoFlamethrower:
-         for(int i=-1; i<=1; i++) {
-             spawn(Vector2(i*4.0, 0), i*0.1, type: BulletType.flame, speedMult: 0.9, dmg: 2);
+         final count = levelData.shots;
+         for(int i=0; i<count; i++) {
+             double angle = (i - (count-1)/2) * 0.08;
+             spawn(Vector2(angle*10, 0), angle, type: BulletType.flame, speedMult: 0.9, dmg: levelData.damage);
          }
          break;
 
       // 16. Void Sovereign (Gravity Pulse)
       case WeaponType.gravityPulse:
-         spawn(Vector2(0, 0), 0, type: BulletType.blackHole, speedMult: 0.4, dmg: 3);
+         // Gravity Well logic
+         final lvl = levelData.level;
+         spawn(Vector2(0, 0), 0, type: BulletType.blackHole, speedMult: 0.4, dmg: levelData.damage, proxRadius: 150.0 + (lvl*50), destroyProj: lvl >= 2);
+         if (lvl >= 5) {
+            // Secondary wells
+            spawn(Vector2(-100, 0), -0.2, type: BulletType.blackHole, speedMult: 0.4, dmg: levelData.damage);
+            spawn(Vector2(100, 0), 0.2, type: BulletType.blackHole, speedMult: 0.4, dmg: levelData.damage);
+         }
          break;
 
       // 17. Chrono Destroyer (Mines)
       case WeaponType.mines:
-         spawn(Vector2(0, 0), 0, type: BulletType.mine, speedMult: 0.0, dmg: 10);
+         // Mines
+         final mineDmg = levelData.level >= 2 ? 50 : 10;
+         spawn(Vector2(0, 0), 0, type: BulletType.mine, speedMult: 0.0, dmg: mineDmg, proxRadius: 100);
          break;
 
-       // 18-25: High Tier God Ships
+       // 18. Astral Leviathan (Ion Cannon)
       case WeaponType.ionCannon:
-         spawn(Vector2(0, 0), 0, type: BulletType.standard, size: Vector2(20, 60), dmg: 20);
+         // Giant piercing shot
+         final lvl = levelData.level;
+         final width = 20.0 + (lvl * 10);
+         spawn(Vector2(0, 0), 0, type: BulletType.piercing, size: Vector2(width, 100), dmg: levelData.damage, speedMult: 3.0);
          break;
       
+      // 19. Infinity Colossus (Annihilation Wave)
       case WeaponType.annihilationWave:
-         for(int i=-5; i<=5; i+=2) {
-             spawn(Vector2(i*6.0, 0), 0, type: BulletType.wave, dmg: 10);
+         final count = levelData.shots;
+         for(int i=0; i<count; i++) {
+             double xOff = (i - (count-1)/2) * 20.0;
+             spawn(Vector2(xOff, 0), 0, type: BulletType.wave, dmg: levelData.damage);
          }
          break;
 
+      // 20. Celestial Warden (Holy Lance)
       case WeaponType.holyLance:
-         spawn(Vector2(0, 0), 0, type: BulletType.piercing, speedMult: 2.5, dmg: 15);
+         spawn(Vector2(0, 0), 0, type: BulletType.piercing, speedMult: 2.5, dmg: levelData.damage, size: Vector2(10, 60));
          break;
       
+      // 21. Abyssal Reaver (Void Tentacles)
       case WeaponType.voidTentacles:
-         for(int i=0; i<4; i++) {
-            spawn(Vector2(0, 0), i*1.5, type: BulletType.homing, turnRate: 10.0, dmg: 8);
+         final count = levelData.shots;
+         for(int i=0; i<count; i++) {
+            double angle = (i - (count-1)/2) * 0.3;
+            // High turn rate homing
+            spawn(Vector2(angle*20, 0), angle, type: BulletType.homing, turnRate: 15.0, dmg: levelData.damage);
          }
          break;
 
+      // 22. Quantum Harbinger (Reality Fracture)
       case WeaponType.realityFracture:
-         spawn(Vector2(0, 0), 0, type: BulletType.timeShatter, size: Vector2(30,30), dmg: 25);
+         spawn(Vector2(0, 0), 0, type: BulletType.timeShatter, size: Vector2(30,30), dmg: levelData.damage);
+         // Echoes logic could be handled by spawning extras
+         if (levelData.level >= 2) {
+             spawn(Vector2(-30, 20), -0.1, type: BulletType.timeShatter, dmg: levelData.damage ~/ 2);
+             spawn(Vector2(30, 20), 0.1, type: BulletType.timeShatter, dmg: levelData.damage ~/ 2);
+         }
          break;
 
+      // 23. Stellar Colossus (Star Core)
       case WeaponType.starCoreEruption:
-         spawn(Vector2(0, 0), 0, type: BulletType.explosive, size: Vector2(40,40), dmg: 30);
+         final lvl = levelData.level;
+         final nuke = lvl >= 4;
+         spawn(Vector2(0, 0), 0, type: BulletType.explosive, size: Vector2(40,40), dmg: levelData.damage, blast: 200.0 + (lvl * 50), nuclear: nuke);
          break;
       
+      // 24. Eternal Sovereign (Cosmic Judgement)
       case WeaponType.cosmicJudgement:
-         spawn(Vector2(0, 0), 0, type: BulletType.lightning, size: Vector2(10, 100), dmg: 50);
+         // Lightning that chains
+         final lvl = levelData.level;
+         spawn(Vector2(0, 0), 0, type: BulletType.lightning, size: Vector2(10, 100), dmg: levelData.damage, chain: 10 + lvl*2);
          break;
 
+      // 25. Omega Nexus (Singularity Genesis)
       case WeaponType.singularityGenesis:
-         spawn(Vector2(0, 0), 0, type: BulletType.blackHole, size: Vector2(60,60), dmg: 100);
+         final lvl = levelData.level;
+         spawn(Vector2(0, 0), 0, type: BulletType.blackHole, size: Vector2(60,60), dmg: levelData.damage, proxRadius: 300, destroyProj: lvl >= 2);
          break;
     }
   }
 
   double _getFireCooldownForShip() {
     switch (currentShip.weaponType) {
-      case WeaponType.gatling: return 0.1;
+      case WeaponType.gatling: 
+        // Dynamic fire rate based on WeaponLevel
+        // Base 0.1s -> L5 0.033s (30/s)
+        final level = getWeaponLevel().level;
+        if (level == 1) return 0.125; // 8/s
+        if (level == 2) return 0.083; // 12/s
+        if (level == 3) return 0.062; // 16/s
+        if (level == 4) return 0.05;  // 20/s
+        return 0.033;                 // 30/s
       case WeaponType.frostBeam: return 0.08;
       case WeaponType.pulseCharge: return 1.5;
       case WeaponType.shotgun: return 0.8;
@@ -1296,6 +1519,12 @@ double getDamageMultiplier() {
   // ═══════════════════════════════════════
 
   void _checkMilestones() {
+    
+    _checkWeaponLevelUp();
+
+    // No text alerts for Boss Rush (obstacles are disabled)
+    if (gameMode == GameMode.bossRush) return;
+
     final milestones = {
       800: ('alien', 'Aliens Approaching!'),
       1500: ('blackhole', 'Black Holes Ahead!'),
@@ -1467,15 +1696,16 @@ double getDamageMultiplier() {
   // ═══════════════════════════════════════
 
   void collectCoin(int value) {
+    if (!coinsEnabled) return;
     int earned = (value * multiplier).ceil();
 
     // Skill tree bonus
     final coinValueLevel = GameStorage.getSkillLevel('coin_value', shipId: currentShip.id);
     earned = (earned * (1 + coinValueLevel * 0.05)).ceil();
 
-    // Lucky clover consumable
-    if (luckyCloverActive) {
-      earned = (earned * 1.2).ceil();
+    // Slightly reduced economy in classic/endless
+    if (gameMode == GameMode.endless) {
+      earned = (earned * 0.85).ceil();
     }
     runCoins += earned;
     combo++;
@@ -1501,7 +1731,13 @@ double getDamageMultiplier() {
     final bountyLevel = GameStorage.getSkillLevel('alien_reward', shipId: currentShip.id);
     reward += bountyLevel * 2;
 
-    runCoins += reward;
+    if (coinsEnabled) {
+      // Slightly reduced economy in classic/endless
+      if (gameMode == GameMode.endless) {
+        reward = (reward * 0.85).ceil();
+      }
+      runCoins += reward;
+    }
     waveSystem.onEnemyDestroyed();
 
     // Kill Streak for Plasma Phoenix
@@ -1612,13 +1848,15 @@ double getDamageMultiplier() {
   void _endRun() {
     if (gameState == GameState.gameOver) return;
     gameState = GameState.gameOver;
-    if (gameMode == GameMode.survivalHell) {
-      final bonus = (timeSurvived ~/ 5);
+    // No stardust rewards in survivalHell, bossRush, gauntlet
+    if (gameMode != GameMode.survivalHell && gameMode != GameMode.bossRush && gameMode != GameMode.gauntlet) {
+      final divisor = gameMode == GameMode.endless ? 10 : 8;
+      final bonus = (timeSurvived ~/ divisor);
       if (bonus > 0) GameStorage.addStardust(bonus);
     }
     GameStorage.updateAfterRun(
       distance: distance,
-      coinsCollected: runCoins,
+      coinsCollected: coinsEnabled ? runCoins : 0,
       aliensKilled: aliensKilledThisRun,
       bossesKilled: bossesKilledThisRun,
       maxCombo: maxCombo,

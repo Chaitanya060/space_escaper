@@ -501,12 +501,13 @@ class _GameScreenState extends State<GameScreen> {
         _game.currentSpeed = _game.baseSpeed * 1.5;
         _game.player.makeInvincible();
         _game.activePowerUps[PowerUpType.invincibility] = 5.0;
-        break;
-      case ConsumableType.luckyClover:
-        _game.luckyCloverActive = true;
+        _game.screenEffects.triggerSpeedBurst();
         break;
       case ConsumableType.shieldCharge:
         _game.activePowerUps[PowerUpType.shield] = 20.0;
+        break;
+      case ConsumableType.damageCore:
+        _game.activePowerUps[PowerUpType.damageBoost] = getPowerUpInfo(PowerUpType.damageBoost).duration;
         break;
       case ConsumableType.xpBooster:
         _game.xpBoosterActive = true;

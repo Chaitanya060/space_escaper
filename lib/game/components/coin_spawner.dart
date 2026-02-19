@@ -121,13 +121,16 @@ class CoinComponent extends PositionComponent
 class CoinSpawner extends Component with HasGameReference<SpaceEscaperGame> {
   final SpaceEscaperGame gameRef;
   double spawnTimer = 0;
-  double spawnInterval = 2.3;
+  double spawnInterval = 2.6;
 
   CoinSpawner({required this.gameRef});
 
   @override
   void update(double dt) {
     if (game.gameState != GameState.playing) return;
+    if (!game.coinsEnabled) return;
+
+    spawnInterval = game.gameMode == GameMode.endless ? 4.2 : 2.6;
 
     spawnTimer -= dt;
     if (spawnTimer <= 0) {
@@ -145,7 +148,8 @@ class CoinSpawner extends Component with HasGameReference<SpaceEscaperGame> {
 
     // Small chance to spawn stardust shards instead of coins
     final stardustRoll = rng.nextDouble();
-    if (stardustRoll < 0.08) {
+    final stardustChance = game.gameMode == GameMode.endless ? 0.05 : 0.05;
+    if (stardustRoll < stardustChance) {
       // Spawn 3-5 stardust shards
       final count = 3 + rng.nextInt(3);
       for (int i = 0; i < count; i++) {
@@ -160,7 +164,7 @@ class CoinSpawner extends Component with HasGameReference<SpaceEscaperGame> {
       return;
     }
 
-    final isRare = rng.nextDouble() < 0.02;
+    final isRare = rng.nextDouble() < (game.gameMode == GameMode.endless ? 0.01 : 0.02);
     final value = isRare ? 5 : 1;
 
     switch (pattern) {
@@ -264,7 +268,7 @@ class StardustComponent extends PositionComponent
     canvas.drawPath(p, Paint()..color = const Color(0xFF8B5CF6));
 
     // Core
-    canvas.drawCircle(Offset(s, s), s * 0.35, Paint()..color = Colors.white.withOpacity(0.7));
+    canvas.drawCircle(Offset(s, s), s * 0.35, Paint()..color = Colors.white.withValues(alpha: 0.7));
     canvas.restore();
   }
 }

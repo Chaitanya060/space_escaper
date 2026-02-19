@@ -23,6 +23,13 @@ class PlayerComponent extends PositionComponent with HasGameReference<SpaceEscap
   bool phasing = false;
   bool bonusShieldReady = false;
 
+  // Boss debuffs
+  bool isFrozen = false;
+  double freezeTimer = 0;
+  bool isSlowed = false;
+  double slowTimer = 0;
+  double slowAmount = 0.5; // multiplier (0.5 = half speed)
+
   PlayerComponent({required this.shipData, required this.gameRef})
       : super(size: Vector2(36, 44), anchor: Anchor.center);
 
@@ -43,6 +50,8 @@ class PlayerComponent extends PositionComponent with HasGameReference<SpaceEscap
   }
 
   void applyDragInput(Vector2 delta) {
+    if (isFrozen) return; // Cannot move while frozen
+
     double mx = delta.x;
     double my = delta.y;
 
@@ -69,10 +78,23 @@ class PlayerComponent extends PositionComponent with HasGameReference<SpaceEscap
         break;
     }
 
-    position.x += mx * 1.2;
-    position.y += my * 1.2;
+    // Apply slow debuff
+    final speedMult = isSlowed ? slowAmount : 1.0;
+    position.x += mx * 1.2 * speedMult;
+    position.y += my * 1.2 * speedMult;
 
     _clampToScreen();
+  }
+
+  void applyFreeze(double duration) {
+    isFrozen = true;
+    freezeTimer = duration;
+  }
+
+  void applySlow(double duration, {double amount = 0.5}) {
+    isSlowed = true;
+    slowTimer = duration;
+    slowAmount = amount;
   }
 
   Color get _modeColor {
@@ -130,6 +152,22 @@ class PlayerComponent extends PositionComponent with HasGameReference<SpaceEscap
       invincibleTimer -= dt;
       if (invincibleTimer <= 0) {
         invincible = false;
+      }
+    }
+
+    // Freeze debuff
+    if (isFrozen) {
+      freezeTimer -= dt;
+      if (freezeTimer <= 0) {
+        isFrozen = false;
+      }
+    }
+
+    // Slow debuff
+    if (isSlowed) {
+      slowTimer -= dt;
+      if (slowTimer <= 0) {
+        isSlowed = false;
       }
     }
 
@@ -220,6 +258,44 @@ class PlayerComponent extends PositionComponent with HasGameReference<SpaceEscap
         ..style = PaintingStyle.fill
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
       canvas.drawCircle(Offset(size.x / 2, size.y / 2), size.x * 0.8 * pulse, shieldGlow);
+    }
+
+    // Freeze visual - ice crystals around ship
+    if (isFrozen) {
+      final icePaint = Paint()
+        ..color = const Color(0xFF67E8F9).withValues(alpha: 0.7)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+      for (int i = 0; i < 8; i++) {
+        final angle = (i / 8) * pi * 2 + gameRef.timeSurvived * 2;
+        final r = size.x * 0.7;
+        canvas.drawCircle(
+          Offset(size.x / 2 + cos(angle) * r, size.y / 2 + sin(angle) * r),
+          3, icePaint,
+        );
+      }
+      // Ice overlay on ship
+      final iceOverlay = Paint()
+        ..color = const Color(0xFF06B6D4).withValues(alpha: 0.25)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+      canvas.drawCircle(Offset(size.x / 2, size.y / 2), size.x * 0.6, iceOverlay);
+    }
+
+    // Slow visual - blue electric crackle
+    if (isSlowed) {
+      final slowPaint = Paint()
+        ..color = const Color(0xFF60A5FA).withValues(alpha: 0.5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+      for (int i = 0; i < 4; i++) {
+        final a = (i / 4) * pi * 2 + gameRef.timeSurvived * 5;
+        final r1 = size.x * 0.4;
+        final r2 = size.x * 0.7;
+        canvas.drawLine(
+          Offset(size.x / 2 + cos(a) * r1, size.y / 2 + sin(a) * r1),
+          Offset(size.x / 2 + cos(a + 0.3) * r2, size.y / 2 + sin(a + 0.3) * r2),
+          slowPaint,
+        );
+      }
     }
   }
 

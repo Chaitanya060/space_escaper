@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/main_menu_screen.dart';
+import 'screens/splash_screen.dart';
 import 'data/game_storage.dart';
 
 void main() async {
@@ -29,7 +30,7 @@ class SpaceEscaperApp extends StatelessWidget {
           ThemeData.dark().textTheme,
         ),
       ),
-      home: const MainMenuScreen(),
+      home: const SplashScreen(),
     );
   }
 }

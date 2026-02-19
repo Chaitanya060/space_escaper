@@ -14,6 +14,20 @@ class AlienComponent extends PositionComponent
   double health = 1.0;
   double bomberTimer = 0;
 
+  // Status Effects
+  double slowFactor = 1.0;
+  double slowTimer = 0;
+  double frozenTimer = 0;
+  
+  void applySlow(double factor, double duration) {
+    if (factor < slowFactor) slowFactor = factor;
+    slowTimer = duration;
+  }
+
+  void freeze(double duration) {
+    frozenTimer = duration;
+  }
+
   AlienComponent({
     required Vector2 position,
     this.alienType = 'chaser',
@@ -28,6 +42,7 @@ class AlienComponent extends PositionComponent
     add(RectangleHitbox(size: Vector2(30, 30), position: Vector2(5, 5)));
 
     speedY = game.currentSpeed + 100;
+
 
     switch (alienType) {
       case 'weaver':
@@ -51,46 +66,62 @@ class AlienComponent extends PositionComponent
 
   @override
   void update(double dt) {
+    // Status effects
+    if (frozenTimer > 0) {
+      frozenTimer -= dt;
+      super.update(dt);
+      return; // Frozen: no movement
+    }
+    
+    if (slowTimer > 0) {
+      slowTimer -= dt;
+      if (slowTimer <= 0) {
+        slowFactor = 1.0;
+      }
+    }
+
+    final moveDt = dt * slowFactor;
+
     super.update(dt);
-    time += dt;
+    time += dt; // Time still progresses for animations/patterns? Maybe slowed too?
+    // Let's keep time normal for patterns but movement slowed.
 
     switch (alienType) {
       case 'chaser':
         final playerX = game.player.position.x;
         if (position.x < playerX - 10) {
-          position.x += 100 * dt;
+          position.x += 100 * moveDt;
         } else if (position.x > playerX + 10) {
-          position.x -= 100 * dt;
+          position.x -= 100 * moveDt;
         }
-        position.y += speedY * dt;
+        position.y += speedY * moveDt;
         break;
       case 'weaver':
-        position.x += cos(time * 3) * speedX * dt;
-        position.y += speedY * dt;
+        position.x += cos(time * 3) * speedX * moveDt;
+        position.y += speedY * moveDt;
         break;
       case 'dasher':
         final burst = (sin(time * 5) > 0.8) ? 2.0 : 1.0;
-        position.y += speedY * burst * dt;
+        position.y += speedY * burst * moveDt;
         break;
       case 'shielder':
-        position.y += speedY * dt;
-        // Shield pulsing visual only
+        position.y += speedY * moveDt;
         break;
       case 'bomber':
-        position.y += speedY * dt;
-        bomberTimer += dt;
+        position.y += speedY * moveDt;
+        bomberTimer += dt; // Bomb timer not slowed?
         if (bomberTimer >= 1.5) {
           bomberTimer = 0;
           _dropBomb();
         }
         break;
       case 'splitter':
-        position.y += speedY * dt;
+        position.y += speedY * moveDt;
         final playerX2 = game.player.position.x;
         if (position.x < playerX2 - 20) {
-          position.x += 60 * dt;
+          position.x += 60 * moveDt;
         } else if (position.x > playerX2 + 20) {
-          position.x -= 60 * dt;
+          position.x -= 60 * moveDt;
         }
         break;
     }
